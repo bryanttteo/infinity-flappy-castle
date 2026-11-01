@@ -46,12 +46,27 @@ export class CoinManager {
 
   // Scroll, animate, check pickups. Pass `hitbox = null` to skip pickups
   // (e.g. on the game-over screen, where only the popups keep animating).
-  update(dt, speed, hitbox, onCollect) {
+  // `attractor` ({x, y, radius, pullSpeed} or null) is the magnet power-up.
+  update(dt, speed, hitbox, onCollect, attractor = null) {
     const c = CONFIG.coins;
 
     for (const coin of this.list) {
       coin.x -= speed * dt;
       coin.phase += dt;
+
+      // Magnet: coins within range move straight toward the player.
+      // Normalising (dx, dy) by the distance gives a direction of length 1,
+      // which we then multiply by the pull speed.
+      if (attractor) {
+        const dx = attractor.x - coin.x;
+        const dy = attractor.y - coin.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0 && dist < attractor.radius) {
+          const step = Math.min(dist, attractor.pullSpeed * dt);
+          coin.x += (dx / dist) * step;
+          coin.y += (dy / dist) * step;
+        }
+      }
     }
 
     if (hitbox) {

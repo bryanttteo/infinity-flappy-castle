@@ -36,6 +36,7 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/obstacles.js`  | castle blocks: spawning, scoring, collision |
 | `src/difficulty.js` | score → speed and gap (difficulty curve) |
 | `src/coins.js`      | collectible coins and "+5" popups |
+| `src/powerups.js`   | shield, slow motion and magnet power-ups |
 | `src/background.js` | parallax castle interior, floor and ceiling |
 | `src/ui.js`         | menu, score, pause and game-over screens |
 | `src/audio.js`      | Web Audio beeps, optional sound files, mute |

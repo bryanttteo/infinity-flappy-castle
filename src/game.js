@@ -30,6 +30,7 @@ import { loadSprites } from './assets.js';
 import { Player } from './player.js';
 import { ObstacleManager } from './obstacles.js';
 import { CoinManager } from './coins.js';
+import { PowerUpManager } from './powerups.js';
 import { Background } from './background.js';
 import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
@@ -67,7 +68,7 @@ const game = {
   levelUpTimer: 0,   // > 0 while the "level up" banner is showing
 };
 
-let player, obstacles, coins, background, sound;
+let player, obstacles, coins, powerups, background, sound;
 let lastTime = 0;
 
 // ------------------------------------------------------------------ helpers
@@ -148,6 +149,7 @@ function startGame() {
   game.levelUpTimer = 0;
   obstacles.reset();
   coins.reset();
+  powerups.reset();
   player.reset(playerHomeX(), playerHomeY());
   setState(STATE.PLAYING);
   flap(); // first tap also flaps, so the start feels responsive
@@ -204,11 +206,18 @@ function update(dt) {
 
     case STATE.PLAYING: {
       const { speed, gap } = currentDifficulty();
-      background.update(dt, speed);
-      player.update(dt);
+
+      // Power-up timers tick in real time and tell us how fast the world
+      // should run (1 = normal, less during slow motion).
+      const timeScale = powerups.updateEffects(dt);
+      const wdt = dt * timeScale; // "world dt"
+
+      background.update(wdt, speed);
+      player.update(CONFIG.powerups.slow.affectsPlayer ? wdt : dt);
       // New obstacles use the current gap; ones already on screen keep theirs.
-      obstacles.update(dt, speed, gap, world, player.x, () => addScore(1));
-      coins.update(dt, speed, player.hitbox, collectCoin);
+      obstacles.update(wdt, speed, gap, world, player.x, () => addScore(1));
+      coins.update(wdt, speed, player.hitbox, collectCoin, powerups.attractor(player));
+      powerups.updatePickups(wdt, speed, player.hitbox, () => sound.play('powerup'));
       game.levelUpTimer = Math.max(0, game.levelUpTimer - dt);
       if (checkCollisions()) endGame();
       break;
@@ -231,21 +240,43 @@ function update(dt) {
 
 // COLLISION: the player is a circle, everything else is a rectangle.
 // Floor and ceiling are just horizontal lines, so we compare y values.
+// Returns true if the run should end.
+//
+// The shield turns a fatal hit into a save: it breaks, and you get a short
+// blinking "invulnerable" window to fly clear of whatever you hit.
 function checkCollisions() {
   const hb = player.hitbox;
+  const shieldCfg = CONFIG.powerups.shield;
+
+  // Saved from floor/ceiling if invulnerable, or if a shield breaks now.
+  const savedFromEdge = () =>
+    shieldCfg.protectsFromGround && (powerups.invulnerable || breakShield());
 
   if (hb.y + hb.r >= world.groundTop) {
     player.y = world.groundTop - hb.r; // don't sink into the floor
+    if (savedFromEdge()) {
+      player.vy = shieldCfg.bounceSpeed; // bounce back up
+      return false;
+    }
     return true;
   }
 
   if (hb.y - hb.r <= world.ceiling) {
-    if (CONFIG.world.ceilingKills) return true;
+    if (CONFIG.world.ceilingKills && !savedFromEdge()) return true;
     player.y = world.ceiling + hb.r; // bonk: stop at the ceiling
-    player.vy = 0;
+    player.vy = Math.max(player.vy, 0);
   }
 
-  return obstacles.collides(hb, world);
+  if (powerups.invulnerable) return false; // pass through blocks while blinking
+  if (obstacles.collides(hb, world)) return !breakShield();
+  return false;
+}
+
+// Uses up the shield if there is one. Returns true if it saved the player.
+function breakShield() {
+  if (!powerups.consumeShield()) return false;
+  sound.play('shieldBreak');
+  return true;
 }
 
 // ---------------------------------------------------------------- render
@@ -258,8 +289,17 @@ function render() {
   background.drawBack(ctx, world);
   obstacles.draw(ctx, world);
   coins.draw(ctx);
+  powerups.drawPickups(ctx);
   background.drawFront(ctx, world);
+
+  // Blink the player while invulnerable (after a shield breaks).
+  const blink =
+    game.state !== STATE.GAME_OVER && powerups.invulnerable && Math.floor(powerups.time * 14) % 2 === 0;
+  if (blink) ctx.globalAlpha = 0.35;
   player.draw(ctx);
+  ctx.globalAlpha = 1;
+  if (game.state !== STATE.GAME_OVER) powerups.drawPlayerEffects(ctx, player);
+  powerups.drawScreenEffects(ctx, world);
 
   if (CONFIG.debug.showHitboxes) {
     obstacles.drawHitboxes(ctx, world);
@@ -278,10 +318,12 @@ function render() {
       break;
     case STATE.PLAYING:
       UI.drawHUD(ctx, world, game.score);
+      powerups.drawHUD(ctx, world);
       UI.drawLevelUp(ctx, world, game.levelUpTimer);
       break;
     case STATE.PAUSED:
       UI.drawHUD(ctx, world, game.score);
+      powerups.drawHUD(ctx, world);
       UI.drawPaused(ctx, world);
       break;
     case STATE.GAME_OVER:
@@ -392,7 +434,13 @@ async function init() {
   player = new Player(images.player);
   obstacles = new ObstacleManager(images);
   coins = new CoinManager(images);
-  obstacles.onSpawn = (ob, previous) => coins.spawnBetween(previous, ob, world);
+  powerups = new PowerUpManager(images);
+  // Each new gap between obstacles gets a power-up, or else maybe a coin.
+  obstacles.onSpawn = (ob, previous) => {
+    if (!powerups.trySpawnBetween(previous, ob, world, game.score)) {
+      coins.spawnBetween(previous, ob, world);
+    }
+  };
   background = new Background(images);
   sound = new SoundManager();
 

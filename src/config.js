@@ -30,6 +30,11 @@ export const CONFIG = {
     levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
     coinPopup: '+{value}',         // {value} is replaced with coins.value
     coinsLabel: 'Coins',
+    powerupNames: {
+      shield: 'Wisteria Ward',
+      slow: 'Focused Breath',
+      magnet: 'Golden Lure',
+    },
   },
 
   fonts: {
@@ -99,6 +104,37 @@ export const CONFIG = {
     popupRise: 40,      // how far it floats up
   },
 
+  // ----------------------------------------------------------- Power-ups
+  // Glowing orbs that sometimes appear between obstacles instead of a coin.
+  powerups: {
+    enabled: true,
+    spawnChance: 0.15,  // 0–1: chance per obstacle gap
+    minScore: 3,        // none appear before this score
+    radius: 15,         // drawn size of the orb
+    hitboxRadius: 20,   // pickup circle (generous)
+    bobAmplitude: 5,
+    // Relative chance of each type (higher = more common, 0 = never).
+    weights: { shield: 1, slow: 1, magnet: 1 },
+
+    shield: {
+      invulnerableTime: 1.0,   // seconds of blinking safety after the shield breaks
+      protectsFromGround: true, // shield also saves you from floor/ceiling (bounces you)
+      bounceSpeed: -480,       // upward speed when bounced off the floor
+    },
+    slow: {
+      duration: 5,      // seconds (real time)
+      timeScale: 0.55,  // 0.55 = the world runs at 55% speed
+      easeSpeed: 4,     // how quickly time slows down / speeds back up
+      affectsPlayer: false, // true = Kanao's gravity and flaps slow down too ("bullet time");
+                            // false = only the world slows, so your flap rhythm stays the same
+    },
+    magnet: {
+      duration: 8,      // seconds (real time)
+      radius: 190,      // coins inside this distance get pulled in
+      pullSpeed: 560,   // how fast they fly to you (units/s)
+    },
+  },
+
   // ---------------------------------------------------------- Difficulty
   // Starts at obstacles.speed / obstacles.gap, then every `pointsPerLevel`
   // points the Castle speeds up and the gaps narrow. See difficulty.js.
@@ -137,6 +173,18 @@ export const CONFIG = {
       coin: [
         { wave: 'square', from: 1568, duration: 0.05, volume: 0.1 },
         { wave: 'square', from: 2349, duration: 0.14, delay: 0.05, volume: 0.1 },
+      ],
+      // Quick rising arpeggio.
+      powerup: [
+        { wave: 'triangle', from: 784, duration: 0.08, volume: 0.18 },
+        { wave: 'triangle', from: 988, duration: 0.08, delay: 0.06, volume: 0.18 },
+        { wave: 'triangle', from: 1175, duration: 0.08, delay: 0.12, volume: 0.18 },
+        { wave: 'triangle', from: 1568, duration: 0.2, delay: 0.18, volume: 0.18 },
+      ],
+      // Glassy shatter.
+      shieldBreak: [
+        { wave: 'noise', from: 6000, to: 800, duration: 0.25, volume: 0.3 },
+        { wave: 'triangle', from: 1400, to: 300, duration: 0.22, volume: 0.2 },
       ],
       // Rising phrase on a Japanese "in" scale (D, Eb, G, A, Bb).
       levelUp: [
@@ -193,6 +241,15 @@ export const CONFIG = {
     coinShine: 'rgba(255, 255, 255, 0.7)',
     coinGlow: 'rgba(245, 197, 66, 0.28)',
 
+    powerups: {
+      shield: '#b48ae0',  // wisteria purple
+      slow: '#6fc3df',    // calm water blue
+      magnet: '#e0504a',  // lacquer red
+      leaf: '#6b9a5a',
+      icon: '#fff8ec',
+      slowTint: 'rgba(60, 80, 170, 0.22)', // screen tint during slow motion
+    },
+
     kanao: {
       hair: '#1d1424',
       skin: '#f7dccb',
@@ -221,6 +278,9 @@ export const CONFIG = {
       backgroundFar: null,   // tiled horizontally, slow parallax
       backgroundMid: null,   // tiled horizontally, medium parallax
       coin: null,            // square image; spun by squashing it horizontally
+      powerupShield: null,   // square images drawn inside the glowing orb
+      powerupSlow: null,
+      powerupMagnet: null,
     },
     // Sound files (mp3 / ogg / wav). null = use the beep recipe in `audio.sounds`.
     sounds: {
@@ -229,6 +289,8 @@ export const CONFIG = {
       hit: null,
       levelUp: null,
       coin: null,
+      powerup: null,
+      shieldBreak: null,
     },
   },
 
