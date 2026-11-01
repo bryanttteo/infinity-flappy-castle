@@ -29,6 +29,7 @@ import { CONFIG } from './config.js';
 import { loadSprites } from './assets.js';
 import { Player } from './player.js';
 import { ObstacleManager } from './obstacles.js';
+import { CoinManager } from './coins.js';
 import { Background } from './background.js';
 import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
@@ -61,11 +62,12 @@ const game = {
   score: 0,
   best: loadNumber(CONFIG.storage.bestScoreKey, 0),
   isNewBest: false,
+  coins: 0,          // coins collected this run
   level: 0,          // difficulty level (see difficulty.js)
   levelUpTimer: 0,   // > 0 while the "level up" banner is showing
 };
 
-let player, obstacles, background, sound;
+let player, obstacles, coins, background, sound;
 let lastTime = 0;
 
 // ------------------------------------------------------------------ helpers
@@ -92,17 +94,24 @@ function currentSpeed() {
   return currentDifficulty().speed;
 }
 
-function addScore() {
-  game.score += 1;
+// Add points and play `soundName`, or the level-up tune if these points
+// pushed us into a new difficulty level.
+function addScore(points = 1, soundName = 'score') {
+  game.score += points;
 
   const { level } = currentDifficulty();
   if (level > game.level) {
     game.level = level;
     game.levelUpTimer = CONFIG.difficulty.levelUpBannerTime;
-    sound.play('levelUp'); // replaces the normal score blip on level-up
+    sound.play('levelUp'); // replaces the normal blip on level-up
   } else {
-    sound.play('score');
+    sound.play(soundName);
   }
+}
+
+function collectCoin() {
+  game.coins += 1;
+  addScore(CONFIG.coins.value, 'coin');
 }
 
 // Fit the canvas to the window. The world is ~640 units tall on landscape
@@ -134,9 +143,11 @@ function resize() {
 function startGame() {
   game.score = 0;
   game.isNewBest = false;
+  game.coins = 0;
   game.level = 0;
   game.levelUpTimer = 0;
   obstacles.reset();
+  coins.reset();
   player.reset(playerHomeX(), playerHomeY());
   setState(STATE.PLAYING);
   flap(); // first tap also flaps, so the start feels responsive
@@ -196,7 +207,8 @@ function update(dt) {
       background.update(dt, speed);
       player.update(dt);
       // New obstacles use the current gap; ones already on screen keep theirs.
-      obstacles.update(dt, speed, gap, world, player.x, addScore);
+      obstacles.update(dt, speed, gap, world, player.x, () => addScore(1));
+      coins.update(dt, speed, player.hitbox, collectCoin);
       game.levelUpTimer = Math.max(0, game.levelUpTimer - dt);
       if (checkCollisions()) endGame();
       break;
@@ -207,6 +219,7 @@ function update(dt) {
       break;
 
     case STATE.GAME_OVER:
+      coins.update(dt, 0, null); // world is frozen, but "+5" popups finish fading
       // Let the player tumble down to the floor.
       if (player.y + player.hitbox.r < world.groundTop) {
         player.update(dt);
@@ -244,11 +257,13 @@ function render() {
 
   background.drawBack(ctx, world);
   obstacles.draw(ctx, world);
+  coins.draw(ctx);
   background.drawFront(ctx, world);
   player.draw(ctx);
 
   if (CONFIG.debug.showHitboxes) {
     obstacles.drawHitboxes(ctx, world);
+    coins.drawHitboxes(ctx);
     const hb = player.hitbox;
     ctx.strokeStyle = '#00ff88';
     ctx.lineWidth = 1.5;
@@ -273,6 +288,7 @@ function render() {
       UI.drawGameOver(ctx, world, {
         score: game.score,
         best: game.best,
+        coins: game.coins,
         isNewBest: game.isNewBest,
         canRestart: game.stateTime >= CONFIG.gameOver.restartDelay,
         time: game.stateTime,
@@ -375,6 +391,8 @@ async function init() {
 
   player = new Player(images.player);
   obstacles = new ObstacleManager(images);
+  coins = new CoinManager(images);
+  obstacles.onSpawn = (ob, previous) => coins.spawnBetween(previous, ob, world);
   background = new Background(images);
   sound = new SoundManager();
 

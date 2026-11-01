@@ -11,6 +11,11 @@ const T = CONFIG.text;
 const F = CONFIG.fonts;
 
 // Text with an outline so it's readable over any background.
+// Exported as drawText so other modules (e.g. coin popups) can use it.
+export function drawText(ctx, str, x, y, size, opts = {}) {
+  text(ctx, str, x, y, size, opts);
+}
+
 function text(ctx, str, x, y, size, opts = {}) {
   const {
     color = C.hudText,
@@ -116,12 +121,12 @@ export function drawPaused(ctx, world) {
   text(ctx, T.resumeHint, world.width / 2, world.height * 0.52, 18, { maxWidth: world.width - 32 });
 }
 
-export function drawGameOver(ctx, world, { score, best, isNewBest, canRestart, time }) {
+export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRestart, time }) {
   ctx.fillStyle = C.overlay;
   ctx.fillRect(0, 0, world.width, world.height);
 
   const w = Math.min(340, world.width - 40);
-  const h = 240;
+  const h = 262;
   const x = (world.width - w) / 2;
   const y = world.height * 0.42 - h / 2;
   const cx = world.width / 2;
@@ -134,9 +139,13 @@ export function drawGameOver(ctx, world, { score, best, isNewBest, canRestart, t
   text(ctx, T.bestLabel, cx + w / 4, y + 82, 16, { color: C.accent, outline: null });
   text(ctx, String(best), cx + w / 4, y + 120, 44, { weight: 800, color: C.lantern });
 
+  if (coins > 0) {
+    text(ctx, `${T.coinsLabel}: ${coins}`, cx, y + 160, 17, { color: C.coin, outline: null });
+  }
+
   if (isNewBest) {
     const pop = 1 + 0.08 * Math.sin(time * 8);
-    text(ctx, T.newBest, cx, y + 168, 20 * pop, { color: C.accent });
+    text(ctx, T.newBest, cx, y + 192, 20 * pop, { color: C.accent });
   }
 
   if (canRestart) {

@@ -28,6 +28,8 @@ export const CONFIG = {
     bestLabel: 'Best',
     loading: 'Entering the Castle…',
     levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
+    coinPopup: '+{value}',         // {value} is replaced with coins.value
+    coinsLabel: 'Coins',
   },
 
   fonts: {
@@ -82,6 +84,21 @@ export const CONFIG = {
     eaveOverhang: 10,   // how far the roof sticks out sideways (visual only)
   },
 
+  // --------------------------------------------------------------- Coins
+  // Gold coins appear between obstacles, roughly on the flight path.
+  coins: {
+    enabled: true,
+    value: 5,           // points per coin
+    spawnChance: 0.6,   // 0–1: chance a coin appears between two obstacles
+    radius: 11,         // drawn size
+    hitboxRadius: 16,   // pickup circle — BIGGER than the coin, so grabbing feels generous
+    yJitter: 45,        // random up/down offset from the middle of the flight path
+    spinSpeed: 4,       // how fast the coin turns
+    bobAmplitude: 4,    // gentle float up and down
+    popupTime: 0.8,     // seconds the "+5" text floats
+    popupRise: 40,      // how far it floats up
+  },
+
   // ---------------------------------------------------------- Difficulty
   // Starts at obstacles.speed / obstacles.gap, then every `pointsPerLevel`
   // points the Castle speeds up and the gaps narrow. See difficulty.js.
@@ -115,6 +132,11 @@ export const CONFIG = {
       hit: [
         { wave: 'sawtooth', from: 220, to: 50, duration: 0.35, volume: 0.28 },
         { wave: 'noise', from: 1800, to: 200, duration: 0.3, volume: 0.35 },
+      ],
+      // Bright, quick sparkle.
+      coin: [
+        { wave: 'square', from: 1568, duration: 0.05, volume: 0.1 },
+        { wave: 'square', from: 2349, duration: 0.14, delay: 0.05, volume: 0.1 },
       ],
       // Rising phrase on a Japanese "in" scale (D, Eb, G, A, Bb).
       levelUp: [
@@ -165,6 +187,12 @@ export const CONFIG = {
     panelBorder: '#c0392b',
     overlay: 'rgba(13, 10, 26, 0.55)',
 
+    coin: '#f5c542',
+    coinEdge: '#a8741a',
+    coinHole: '#3d2414',
+    coinShine: 'rgba(255, 255, 255, 0.7)',
+    coinGlow: 'rgba(245, 197, 66, 0.28)',
+
     kanao: {
       hair: '#1d1424',
       skin: '#f7dccb',
@@ -192,6 +220,7 @@ export const CONFIG = {
       obstacleCap: null,     // roof at the gap edge (flipped for top blocks)
       backgroundFar: null,   // tiled horizontally, slow parallax
       backgroundMid: null,   // tiled horizontally, medium parallax
+      coin: null,            // square image; spun by squashing it horizontally
     },
     // Sound files (mp3 / ogg / wav). null = use the beep recipe in `audio.sounds`.
     sounds: {
@@ -199,6 +228,7 @@ export const CONFIG = {
       score: null,
       hit: null,
       levelUp: null,
+      coin: null,
     },
   },
 

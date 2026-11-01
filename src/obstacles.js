@@ -21,6 +21,7 @@ export class ObstacleManager {
   constructor(images = {}) {
     this.images = images;
     this.bodyPattern = null; // created lazily if obstacleBody image exists
+    this.onSpawn = null;     // optional callback(newObstacle, previousObstacle)
     this.reset();
   }
 
@@ -67,7 +68,9 @@ export class ObstacleManager {
     }
 
     const gapY = maxY > minY ? minY + Math.random() * (maxY - minY) : (minY + maxY) / 2;
-    this.list.push({ x, gapY, gap, passed: false });
+    const ob = { x, gapY, gap, passed: false };
+    this.list.push(ob);
+    if (this.onSpawn) this.onSpawn(ob, previous); // lets coins (and later power-ups) place themselves
   }
 
   // The two solid rectangles of an obstacle.
