@@ -34,6 +34,15 @@ export const CONFIG = {
     skinUnlocked: 'New outfit: {name}!',     // shown on game over
     skinCounter: '{n} / {total}',
     menuButton: 'Menu (Esc)',
+    lbButton: 'Records (L)',
+    lbTitle: 'Castle Records',
+    lbEmpty: 'No records yet. Be the first!',
+    lbBack: 'Tap or Esc to return',
+    lbHeaders: ['#', 'Name', 'Score', 'Coins'],
+    enterInitials: 'Top 10! Enter your initials',
+    entryHint: 'Type, or tap ▲▼ · Enter to save · Esc to skip',
+    saveButton: 'OK',
+    savedRank: '#{rank} in the Castle Records!',
     coinPopup: '+{value}',         // {value} is replaced with coins.value
     coinsLabel: 'Coins',
     powerupNames: {
@@ -164,6 +173,15 @@ export const CONFIG = {
     color: '#fff3e0',
     crashAlpha: 0.45,   // brightness of the white flash on crash (0–1)
     duration: 0.18,     // seconds
+  },
+
+  // --------------------------------------------------------- Leaderboard
+  // "Castle Records": a local top list saved in this browser (no server).
+  leaderboard: {
+    enabled: true,
+    maxEntries: 10,
+    initialsLength: 3,
+    allowedChars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', // order used by ▲/▼
   },
 
   // --------------------------------------------------------------- Skins
@@ -475,6 +493,8 @@ export const CONFIG = {
     bestScoreKey: 'infinityFlappyCastle.bestScore',
     mutedKey: 'infinityFlappyCastle.muted',
     skinKey: 'infinityFlappyCastle.skin',
+    leaderboardKey: 'infinityFlappyCastle.records',
+    initialsKey: 'infinityFlappyCastle.initials', // pre-fills the last initials you used
   },
 
   debug: {

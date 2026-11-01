@@ -37,6 +37,7 @@ import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
 import { getDifficulty } from './difficulty.js';
 import * as Skins from './skins.js';
+import * as Records from './leaderboard.js';
 import * as UI from './ui.js';
 
 const STATE = Object.freeze({
@@ -44,6 +45,7 @@ const STATE = Object.freeze({
   PLAYING: 'playing',
   PAUSED: 'paused',
   GAME_OVER: 'gameOver',
+  LEADERBOARD: 'leaderboard', // the Castle Records screen (opened from the menu)
 });
 
 const canvas = document.getElementById('game');
@@ -74,6 +76,11 @@ const game = {
   skinIndex: 0,        // outfit being shown on the menu (may be locked)
   equippedIndex: 0,    // outfit actually used in play (always unlocked)
   newSkins: [],        // names of outfits unlocked by the last run
+  // Leaderboard entry on the game-over panel:
+  //   mode 'entering' = typing initials, 'saved' = showing rank, null = nothing
+  entry: { mode: null, letters: [], cursor: 0, rank: 0 },
+  records: [],         // loaded when the records screen opens
+  highlightDate: 0,    // marks the record you just saved
 };
 
 let images = {}; // every loaded PNG, by name
@@ -288,7 +295,86 @@ function endGame() {
     saveNumber(CONFIG.storage.bestScoreKey, game.best);
     game.newSkins = Skins.newlyUnlocked(oldBest, game.best).map((s) => s.name);
   }
+  // Made the top list? Ask for initials (pre-filled with the last ones used).
+  game.entry = Records.qualifies(game.score)
+    ? { mode: 'entering', letters: Records.lastInitials(), cursor: 0, rank: 0 }
+    : { mode: null, letters: [], cursor: 0, rank: 0 };
   setState(STATE.GAME_OVER);
+}
+
+// ------------------------------------------------------------ leaderboard
+
+const entering = () => game.state === STATE.GAME_OVER && game.entry.mode === 'entering';
+
+// Step one letter slot through allowedChars (dir = +1 / -1, wrapping round).
+function changeLetter(index, dir) {
+  const chars = CONFIG.leaderboard.allowedChars;
+  const cur = chars.indexOf(game.entry.letters[index]);
+  game.entry.letters[index] = chars[(cur + dir + chars.length) % chars.length];
+  game.entry.cursor = index;
+}
+
+// Typed a character: fill the current slot and move to the next one.
+function typeLetter(ch) {
+  const e = game.entry;
+  e.letters[e.cursor] = ch;
+  e.cursor = Math.min(e.letters.length - 1, e.cursor + 1);
+}
+
+function saveEntry() {
+  const record = {
+    name: game.entry.letters.join(''),
+    score: game.score,
+    coins: game.coins,
+    skin: Skins.skinList()[game.equippedIndex].id,
+    date: Date.now(), // also serves as a unique id for highlighting
+  };
+  const rank = Records.add(record);
+  Records.rememberInitials(game.entry.letters);
+  game.entry = { ...game.entry, mode: rank ? 'saved' : null, rank };
+  game.highlightDate = record.date;
+  sound.play('powerup');
+}
+
+function skipEntry() {
+  game.entry.mode = null;
+}
+
+function openRecords() {
+  if (!CONFIG.leaderboard.enabled) return;
+  game.records = Records.load();
+  setState(STATE.LEADERBOARD);
+}
+
+// Keys while typing initials. Everything else (flap, mute, restart) is
+// ignored, so you can type M or P without side effects.
+function handleNameKey(e) {
+  if (game.stateTime < CONFIG.gameOver.panelDelay) return; // panel not shown yet
+  const ch = e.key.length === 1 ? e.key.toUpperCase() : '';
+  const n = game.entry.letters.length;
+
+  if (ch && CONFIG.leaderboard.allowedChars.includes(ch)) {
+    typeLetter(ch);
+  } else if (e.code === 'Backspace') {
+    e.preventDefault();
+    game.entry.cursor = Math.max(0, game.entry.cursor - 1);
+  } else if (e.code === 'ArrowLeft') {
+    game.entry.cursor = (game.entry.cursor - 1 + n) % n;
+  } else if (e.code === 'ArrowRight') {
+    game.entry.cursor = (game.entry.cursor + 1) % n;
+  } else if (e.code === 'ArrowUp') {
+    e.preventDefault();
+    changeLetter(game.entry.cursor, 1);
+  } else if (e.code === 'ArrowDown') {
+    e.preventDefault();
+    changeLetter(game.entry.cursor, -1);
+  } else if (e.code === 'Enter') {
+    if (game.stateTime >= CONFIG.gameOver.restartDelay) saveEntry();
+  } else if (e.code === 'Escape') {
+    skipEntry();
+  } else if (e.code === 'Space') {
+    e.preventDefault(); // don't scroll; and don't restart by accident
+  }
 }
 
 function flap() {
@@ -314,7 +400,11 @@ function primaryAction() {
       togglePause();
       break;
     case STATE.GAME_OVER:
+      if (game.entry.mode === 'entering') break; // finish (or skip) initials first
       if (game.stateTime >= CONFIG.gameOver.restartDelay) startGame();
+      break;
+    case STATE.LEADERBOARD:
+      setState(STATE.MENU);
       break;
   }
 }
@@ -326,6 +416,7 @@ function update(dt) {
 
   switch (game.state) {
     case STATE.MENU:
+    case STATE.LEADERBOARD:
       background.update(dt, currentSpeed() * 0.5);
       player.idle(dt, playerHomeY());
       break;
@@ -491,7 +582,11 @@ function render() {
         total: list.length,
         time: game.stateTime,
       });
+      UI.drawRecordsButton(ctx, world);
     }
+      break;
+    case STATE.LEADERBOARD:
+      UI.drawLeaderboard(ctx, world, game.records, game.highlightDate, game.stateTime);
       break;
     case STATE.PLAYING:
       UI.drawHUD(ctx, world, game.score);
@@ -513,6 +608,7 @@ function render() {
         canRestart: game.stateTime >= CONFIG.gameOver.restartDelay,
         time: game.stateTime,
         newSkins: game.newSkins,
+        entry: game.entry,
       });
       break;
   }
@@ -541,6 +637,31 @@ function frame(now) {
 function setupInput() {
   window.addEventListener('keydown', (e) => {
     sound.unlock(); // browsers only allow audio after a user gesture
+
+    // Typing initials takes over the keyboard.
+    if (entering()) {
+      handleNameKey(e);
+      return;
+    }
+
+    // Records screen: most keys go back to the menu.
+    if (game.state === STATE.LEADERBOARD) {
+      if (['Escape', 'Space', 'Enter', 'KeyL'].includes(e.code)) {
+        e.preventDefault();
+        setState(STATE.MENU);
+      }
+      return;
+    }
+
+    if (e.code === 'KeyL') {
+      if (game.state === STATE.MENU) openRecords();
+      else if (game.state === STATE.GAME_OVER && game.stateTime >= CONFIG.gameOver.restartDelay) {
+        goToMenu();
+        openRecords();
+      }
+      return;
+    }
+
     switch (e.code) {
       case 'Space':
       case 'ArrowUp':
@@ -587,6 +708,24 @@ function setupInput() {
       return;
     }
 
+    // Initials entry: taps only work on ▲ / ▼ / letter slots / OK.
+    if (entering()) {
+      if (game.stateTime < CONFIG.gameOver.panelDelay) return;
+      const hit = UI.hitNameEntry(world, game.newSkins.length, wx, wy);
+      if (!hit) return;
+      if (hit.type === 'up') changeLetter(hit.index, 1);
+      else if (hit.type === 'down') changeLetter(hit.index, -1);
+      else if (hit.type === 'slot') game.entry.cursor = hit.index;
+      else if (hit.type === 'ok' && game.stateTime >= CONFIG.gameOver.restartDelay) saveEntry();
+      return;
+    }
+
+    // Menu: the Records button opens the leaderboard.
+    if (game.state === STATE.MENU && CONFIG.leaderboard.enabled && UI.hitRecordsButton(world, wx, wy)) {
+      openRecords();
+      return;
+    }
+
     // Menu: tapping an outfit arrow changes outfit instead of starting.
     if (game.state === STATE.MENU) {
       const dir = UI.hitSkinArrow(player.x, playerHomeY(), wx, wy);
@@ -600,7 +739,7 @@ function setupInput() {
     if (
       game.state === STATE.GAME_OVER &&
       game.stateTime >= CONFIG.gameOver.restartDelay &&
-      UI.hitGameOverMenu(world, game.newSkins.length, wx, wy)
+      UI.hitGameOverMenu(world, game.newSkins.length, game.entry.mode, wx, wy)
     ) {
       goToMenu();
       return;

@@ -22,6 +22,8 @@ ruby -run -e httpd . -p 8000   # works on a stock Mac
 | Pause   | P / Esc                 | ❚❚ button         |
 | Outfit  | ← → / A D on the menu   | tap the arrows    |
 | Menu    | Esc on game over        | Menu button       |
+| Records | L on the menu           | Records button    |
+| Initials| type letters, ↑↓ ←→, Enter | tap ▲ ▼, OK   |
 | Mute    | M                       | 🔊 button         |
 
 ## Customise
@@ -36,6 +38,7 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/game.js`       | entry point, game loop, state machine, input |
 | `src/player.js`     | Kanao's physics, tilt, hitbox and drawing |
 | `src/skins.js`      | outfits unlocked by best score |
+| `src/leaderboard.js` | Castle Records: local top 10 with initials |
 | `src/obstacles.js`  | castle blocks and the Shifting Chamber boss: spawning, scoring, collision |
 | `src/difficulty.js` | score → speed and gap (difficulty curve) |
 | `src/coins.js`      | collectible coins and "+5" popups |

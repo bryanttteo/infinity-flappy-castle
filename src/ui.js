@@ -121,25 +121,62 @@ export function drawPaused(ctx, world) {
   text(ctx, T.resumeHint, world.width / 2, world.height * 0.52, 18, { maxWidth: world.width - 32 });
 }
 
-// Panel size and position, shared by drawing and the Menu-button hit test.
-function gameOverLayout(world, unlockCount) {
+// Extra panel height for the leaderboard part: initials entry, or the saved rank.
+const ENTRY_HEIGHT = { entering: 130, saved: 30 };
+
+// Panel size and position, shared by drawing and the hit tests, so taps
+// always line up with what's drawn. `mode` is 'entering', 'saved' or null.
+function gameOverLayout(world, unlockCount, mode) {
   const w = Math.min(340, world.width - 40);
-  const h = 262 + unlockCount * 24;
+  const h = 262 + unlockCount * 24 + (ENTRY_HEIGHT[mode] || 0);
   const x = (world.width - w) / 2;
-  const y = world.height * 0.42 - h / 2;
+  const y = Math.max(world.ceiling + 8, world.height * 0.42 - h / 2);
   const menu = { x: world.width / 2 - 60, y: y + h + 14, w: 120, h: 38 };
-  return { x, y, w, h, menu };
+
+  // Initials entry: n letter slots with ▲ above and ▼ below, then an OK button.
+  const eTop = y + 210 + unlockCount * 24;
+  const n = CONFIG.leaderboard.initialsLength;
+  const slotW = 38, slotGap = 10, okW = 64, okGap = 18;
+  const rowW = n * slotW + (n - 1) * slotGap + okGap + okW;
+  const sx = world.width / 2 - rowW / 2;
+  const slots = Array.from({ length: n }, (_, i) => {
+    const sxi = sx + i * (slotW + slotGap);
+    return {
+      up: { x: sxi, y: eTop + 24, w: slotW, h: 24 },
+      slot: { x: sxi, y: eTop + 50, w: slotW, h: 44 },
+      down: { x: sxi, y: eTop + 96, w: slotW, h: 24 },
+    };
+  });
+  const ok = { x: sx + n * (slotW + slotGap) - slotGap + okGap, y: eTop + 54, w: okW, h: 36 };
+
+  return { x, y, w, h, menu, eTop, slots, ok };
 }
 
-export function hitGameOverMenu(world, unlockCount, px, py) {
-  return hitRect(gameOverLayout(world, unlockCount).menu, px, py);
+export function hitGameOverMenu(world, unlockCount, mode, px, py) {
+  return hitRect(gameOverLayout(world, unlockCount, mode).menu, px, py);
 }
 
-export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRestart, time, newSkins = [] }) {
+// What did a tap on the initials entry hit?
+// Returns { type: 'up' | 'down' | 'slot', index }, { type: 'ok' }, or null.
+export function hitNameEntry(world, unlockCount, px, py) {
+  const L = gameOverLayout(world, unlockCount, 'entering');
+  if (hitRect(L.ok, px, py, 6)) return { type: 'ok' };
+  for (let i = 0; i < L.slots.length; i++) {
+    const s = L.slots[i];
+    if (hitRect(s.up, px, py, 2)) return { type: 'up', index: i };
+    if (hitRect(s.down, px, py, 2)) return { type: 'down', index: i };
+    if (hitRect(s.slot, px, py, 2)) return { type: 'slot', index: i };
+  }
+  return null;
+}
+
+// `entry` = { mode: 'entering' | 'saved' | null, letters, cursor, rank }
+export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRestart, time, newSkins = [], entry = {} }) {
   ctx.fillStyle = C.overlay;
   ctx.fillRect(0, 0, world.width, world.height);
 
-  const { x, y, w, h, menu } = gameOverLayout(world, newSkins.length);
+  const layout = gameOverLayout(world, newSkins.length, entry.mode);
+  const { x, y, w, h, menu } = layout;
   const cx = world.width / 2;
 
   panel(ctx, x, y, w, h);
@@ -168,6 +205,19 @@ export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRes
     });
   });
 
+  if (entry.mode === 'entering') {
+    drawNameEntry(ctx, layout, entry, time, w);
+    return; // no retry / menu until the initials are saved or skipped
+  }
+
+  if (entry.mode === 'saved') {
+    text(ctx, T.savedRank.replace('{rank}', entry.rank), cx, layout.eTop + 12, 18, {
+      color: C.lantern,
+      outline: null,
+      maxWidth: w - 24,
+    });
+  }
+
   if (canRestart) {
     ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 4);
     text(ctx, T.retryHint, cx, y + h - 26, 17, { outline: null, maxWidth: w - 24 });
@@ -182,6 +232,125 @@ export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRes
     ctx.stroke();
     text(ctx, T.menuButton, cx, menu.y + menu.h / 2, 16, { outline: null, color: C.accent });
   }
+}
+
+// Letter slots with ▲/▼, the current slot outlined and blinking, and OK.
+function drawNameEntry(ctx, layout, entry, time, panelW) {
+  const cx = (layout.x + layout.x + panelW) / 2;
+  text(ctx, T.enterInitials, cx, layout.eTop + 8, 17, { color: C.accent, outline: null, maxWidth: panelW - 24 });
+
+  layout.slots.forEach((s, i) => {
+    const active = i === entry.cursor;
+    roundRect(ctx, s.slot.x, s.slot.y, s.slot.w, s.slot.h, 6);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fill();
+    ctx.lineWidth = active ? 2.5 : 1.5;
+    ctx.strokeStyle = active && Math.sin(time * 8) > -0.3 ? C.accent : 'rgba(242,230,201,0.4)';
+    ctx.stroke();
+    text(ctx, entry.letters[i], s.slot.x + s.slot.w / 2, s.slot.y + s.slot.h / 2 + 1, 26, { weight: 800, outline: null });
+
+    // ▲ and ▼ as small filled triangles.
+    ctx.fillStyle = active ? C.hudText : 'rgba(242,230,201,0.55)';
+    for (const [r, dir] of [[s.up, -1], [s.down, 1]]) {
+      const mx = r.x + r.w / 2, my = r.y + r.h / 2;
+      ctx.beginPath();
+      ctx.moveTo(mx - 7, my - dir * 4);
+      ctx.lineTo(mx + 7, my - dir * 4);
+      ctx.lineTo(mx, my + dir * 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+  });
+
+  const ok = layout.ok;
+  roundRect(ctx, ok.x, ok.y, ok.w, ok.h, 8);
+  ctx.fillStyle = C.danger;
+  ctx.fill();
+  text(ctx, T.saveButton, ok.x + ok.w / 2, ok.y + ok.h / 2 + 1, 17, { weight: 800, outline: null });
+
+  text(ctx, T.entryHint, cx, layout.eTop + 136, 12, { outline: null, color: '#b8aec4', maxWidth: panelW - 20 });
+}
+
+// ------------------------------------------------------------- records
+
+function recordsButtonRect(world) {
+  return { x: world.width / 2 - 75, y: world.height * 0.85 - 17, w: 150, h: 34 };
+}
+
+export function hitRecordsButton(world, x, y) {
+  return hitRect(recordsButtonRect(world), x, y);
+}
+
+// Small button on the menu that opens the records screen.
+export function drawRecordsButton(ctx, world) {
+  if (!CONFIG.leaderboard.enabled) return;
+  const r = recordsButtonRect(world);
+  roundRect(ctx, r.x, r.y, r.w, r.h, 10);
+  ctx.fillStyle = C.panel;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = C.lantern;
+  ctx.stroke();
+  text(ctx, T.lbButton, r.x + r.w / 2, r.y + r.h / 2 + 1, 15, { outline: null, color: C.lantern });
+}
+
+// The Castle Records table. `highlightDate` marks the record just saved.
+export function drawLeaderboard(ctx, world, entries, highlightDate, time) {
+  ctx.fillStyle = C.overlay;
+  ctx.fillRect(0, 0, world.width, world.height);
+
+  const rowH = 28;
+  const max = CONFIG.leaderboard.maxEntries;
+  const w = Math.min(380, world.width - 32);
+  const h = 104 + max * rowH + 36;
+  const x = (world.width - w) / 2;
+  const y = Math.max(world.ceiling + 8, world.height * 0.48 - h / 2);
+  const cx = world.width / 2;
+  panel(ctx, x, y, w, h);
+
+  text(ctx, T.lbTitle, cx, y + 34, 28, { font: F.title, weight: 800, color: C.lantern, outline: null, maxWidth: w - 24 });
+
+  // Column positions.
+  const colRank = x + 28, colDot = x + 54, colName = x + 70, colScore = x + w - 86, colCoins = x + w - 22;
+  const headY = y + 74;
+  const [hRank, hName, hScore, hCoins] = T.lbHeaders;
+  const head = { color: C.accent, outline: null };
+  text(ctx, hRank, colRank, headY, 13, head);
+  text(ctx, hName, colName, headY, 13, { ...head, align: 'left' });
+  text(ctx, hScore, colScore, headY, 13, { ...head, align: 'right' });
+  text(ctx, hCoins, colCoins, headY, 13, { ...head, align: 'right' });
+
+  if (entries.length === 0) {
+    text(ctx, T.lbEmpty, cx, y + 104 + rowH * 2, 16, { outline: null, color: '#b8aec4', maxWidth: w - 24 });
+  }
+
+  entries.forEach((e, i) => {
+    const ry = y + 104 + i * rowH;
+
+    if (highlightDate && e.date === highlightDate) {
+      ctx.fillStyle = `rgba(233, 166, 201, ${0.14 + 0.08 * Math.sin(time * 5)})`;
+      ctx.fillRect(x + 8, ry - rowH / 2, w - 16, rowH);
+    }
+
+    // Top three in gold, silver, bronze.
+    const rankColor = ['#f5c542', '#d8d8e0', '#d08a4a'][i] || C.hudText;
+    text(ctx, String(i + 1), colRank, ry, 16, { outline: null, color: rankColor, weight: 800 });
+
+    // Dot in the colour of the outfit used for that run.
+    const skin = CONFIG.skins.list.find((s) => s.id === e.skin);
+    ctx.fillStyle = (skin && skin.colors.capeBottom) || CONFIG.colors.kanao.capeBottom;
+    ctx.beginPath();
+    ctx.arc(colDot, ry, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    text(ctx, e.name, colName, ry, 17, { outline: null, align: 'left', weight: 800 });
+    text(ctx, String(e.score), colScore, ry, 17, { outline: null, align: 'right', weight: 800, color: C.lantern });
+    text(ctx, String(e.coins), colCoins, ry, 15, { outline: null, align: 'right', color: C.coin });
+  });
+
+  ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 4);
+  text(ctx, T.lbBack, cx, y + h - 22, 15, { outline: null });
+  ctx.globalAlpha = 1;
 }
 
 // ---------------------------------------------------------- outfit picker
