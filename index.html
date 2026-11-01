@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0a1a">
+  <title>Infinity Flappy Castle</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game" aria-label="Infinity Flappy Castle game"></canvas>
+
+  <!-- Shown only if the game fails to start (usually: opened as a file:// URL in Chrome). -->
+  <div id="start-help" hidden>
+    <h1>The game needs a tiny local server</h1>
+    <p>Browsers block ES modules on <code>file://</code> pages. In this folder, run one of:</p>
+    <pre>npx serve</pre>
+    <pre>python3 -m http.server 8000</pre>
+    <p>then open the address it prints (for example <code>http://localhost:3000</code>).</p>
+  </div>
+
+  <script type="module" src="src/game.js"></script>
+  <script>
+    // Classic (non-module) script: runs even where modules are blocked.
+    // If game.js hasn't flagged itself as started after 2s, show the help box.
+    setTimeout(function () {
+      if (!window.__gameStarted) document.getElementById('start-help').hidden = false;
+    }, 2000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0d0a1a;
+  /* Stop mobile browsers from scrolling, bouncing, zooming or highlighting on tap */
+  position: fixed;
+  inset: 0;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+canvas {
+  display: block;
+  touch-action: none; /* we handle taps ourselves */
+  cursor: pointer;
+}
+
+#start-help {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: 520px;
+  height: fit-content;
+  padding: 24px;
+  box-sizing: border-box;
+  font: 16px/1.5 system-ui, sans-serif;
+  color: #f2e6c9;
+  background: rgba(13, 10, 26, 0.95);
+  border: 2px solid #c0392b;
+  border-radius: 12px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+#start-help[hidden] {
+  display: none;
+}
+
+#start-help h1 {
+  margin-top: 0;
+  font-size: 20px;
+  color: #e9a6c9;
+}
+
+#start-help pre {
+  background: #1b1328;
+  padding: 8px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
