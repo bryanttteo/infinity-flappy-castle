@@ -33,8 +33,8 @@ export class CoinManager {
     const c = CONFIG.coins;
     if (!c.enabled || !previous || Math.random() > c.spawnChance) return;
 
-    const w = CONFIG.obstacles.width;
-    const x = (previous.x + next.x) / 2 + w / 2;
+    // Centre of the empty space between the two obstacles (they can differ in width).
+    const x = (previous.x + previous.w + next.x) / 2;
     let y = (previous.gapY + next.gapY) / 2 + (Math.random() * 2 - 1) * c.yJitter;
 
     // Keep it well clear of the ceiling and floor.

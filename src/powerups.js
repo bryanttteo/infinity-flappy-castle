@@ -68,7 +68,7 @@ export class PowerUpManager {
     if (!type) return false;
 
     const margin = p.hitboxRadius + 10;
-    const x = (previous.x + next.x) / 2 + CONFIG.obstacles.width / 2;
+    const x = (previous.x + previous.w + next.x) / 2; // centre of the empty space between them
     const y = Math.max(world.ceiling + margin, Math.min(world.groundTop - margin, (previous.gapY + next.gapY) / 2));
     this.items.push({ x, y, type, phase: Math.random() * Math.PI * 2 });
     return true;

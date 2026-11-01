@@ -33,7 +33,7 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/config.js`     | all numbers, colours, text and asset paths |
 | `src/game.js`       | entry point, game loop, state machine, input |
 | `src/player.js`     | Kanao's physics, tilt, hitbox and drawing |
-| `src/obstacles.js`  | castle blocks: spawning, scoring, collision |
+| `src/obstacles.js`  | castle blocks and the Shifting Chamber boss: spawning, scoring, collision |
 | `src/difficulty.js` | score → speed and gap (difficulty curve) |
 | `src/coins.js`      | collectible coins and "+5" popups |
 | `src/powerups.js`   | shield, slow motion and magnet power-ups |

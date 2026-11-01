@@ -29,6 +29,7 @@ export const CONFIG = {
     loading: 'Entering the Castle…',
     levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
     dawn: 'Dawn breaks over the Castle',
+    bossWarning: 'A Shifting Chamber approaches!',
     coinPopup: '+{value}',         // {value} is replaced with coins.value
     coinsLabel: 'Coins',
     powerupNames: {
@@ -161,6 +162,21 @@ export const CONFIG = {
     duration: 0.18,     // seconds
   },
 
+  // ---------------------------------------------------------------- Boss
+  // The Shifting Chamber: every `every` points, a wide ornate block appears
+  // whose gap slides up and down while it passes.
+  boss: {
+    enabled: true,
+    every: 50,          // a boss after every 50 points (50, 100, 150…)
+    width: 150,         // much wider than a normal block
+    gapBonus: 30,       // its gap is this much bigger than the current normal gap (moving = harder)
+    amplitude: 70,      // how far the gap slides up/down from its centre
+    moveSpeed: 1.6,     // how fast it slides (radians per second; 1.6 ≈ one cycle every 4s)
+    extraSpace: 90,     // extra room before and after it
+    points: 5,          // score for clearing it (instead of 1)
+    bannerTime: 2.2,    // seconds the warning shows
+  },
+
   // ---------------------------------------------------------------- Dawn
   // The Castle has no daytime… until you survive long enough. At startScore,
   // sunlight breaks in: colours blend to colors.dawn and light shafts appear.
@@ -224,6 +240,20 @@ export const CONFIG = {
       shieldBreak: [
         { wave: 'noise', from: 6000, to: 800, duration: 0.25, volume: 0.3 },
         { wave: 'triangle', from: 1400, to: 300, duration: 0.22, volume: 0.2 },
+      ],
+      // Low taiko-like rumble as the boss approaches.
+      bossWarning: [
+        { wave: 'sine', from: 110, to: 70, duration: 0.35, volume: 0.35 },
+        { wave: 'noise', from: 400, to: 100, duration: 0.3, volume: 0.25 },
+        { wave: 'sine', from: 110, to: 70, duration: 0.35, delay: 0.3, volume: 0.35 },
+        { wave: 'sine', from: 98, to: 55, duration: 0.6, delay: 0.6, volume: 0.4 },
+      ],
+      // Triumphant flourish for clearing the boss.
+      bossClear: [
+        { wave: 'square', from: 659, duration: 0.1, volume: 0.12 },
+        { wave: 'square', from: 784, duration: 0.1, delay: 0.09, volume: 0.12 },
+        { wave: 'square', from: 988, duration: 0.1, delay: 0.18, volume: 0.12 },
+        { wave: 'triangle', from: 1319, duration: 0.45, delay: 0.27, volume: 0.18 },
       ],
       // Soft, swelling major chord.
       dawn: [
@@ -302,6 +332,13 @@ export const CONFIG = {
       floor: '#6b4226',
       tatami: '#9c9858',
     },
+    boss: {
+      lacquer: '#7a1424',  // deep red body
+      trim: '#d4a03a',     // gold trim and eave edges
+      glow: 'rgba(192, 57, 43, 0.45)', // pulsing aura around the gap edges
+      lantern: '#ff6b4a',
+    },
+
     sunRay: 'rgba(255, 222, 160, 0.22)',
     sunMote: 'rgba(255, 236, 200, 0.8)',
     dawnWarmth: 'rgba(255, 170, 90, 0.08)', // light warm wash over everything
@@ -357,6 +394,8 @@ export const CONFIG = {
       powerup: null,
       shieldBreak: null,
       dawn: null,
+      bossWarning: null,
+      bossClear: null,
     },
   },
 

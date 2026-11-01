@@ -69,6 +69,7 @@ const game = {
   banner: { text: '', timer: 0, duration: 1 }, // short message under the score
   dawn: 0,             // 0 = night … 1 = full dawn (animated)
   dawnReached: false,  // has this run hit dawn.startScore yet?
+  bossesQueued: 0,     // how many bosses this run has triggered so far
 };
 
 // Screen shake and flash: simple countdown timers.
@@ -127,7 +128,24 @@ function addScore(points = 1, soundName = 'score') {
     sfx = 'dawn';
   }
 
+  // Every `boss.every` points, ask for a boss. Using floor(score / every)
+  // means a +5 coin that jumps from 48 to 53 still counts as passing 50.
+  const b = CONFIG.boss;
+  if (b.enabled && b.every > 0) {
+    const due = Math.floor(game.score / b.every);
+    if (due > game.bossesQueued) {
+      game.bossesQueued = due;
+      obstacles.queueBoss(); // it spawns off-screen right; the warning plays then
+    }
+  }
+
   sound.play(sfx);
+}
+
+// Called by obstacles.update when the player passes an obstacle.
+function passObstacle(ob) {
+  if (ob.boss) addScore(CONFIG.boss.points, 'bossClear');
+  else addScore(1);
 }
 
 function showBanner(text, duration) {
@@ -198,6 +216,7 @@ function startGame() {
   game.dawn = 0;            // every run starts at night
   game.dawnReached = false;
   background.dawn = 0;
+  game.bossesQueued = 0;
   obstacles.reset();
   coins.reset();
   powerups.reset();
@@ -270,7 +289,7 @@ function update(dt) {
       background.update(wdt, speed);
       player.update(CONFIG.powerups.slow.affectsPlayer ? wdt : dt);
       // New obstacles use the current gap; ones already on screen keep theirs.
-      obstacles.update(wdt, speed, gap, world, player.x, () => addScore(1));
+      obstacles.update(wdt, speed, gap, world, player.x, passObstacle);
       coins.update(wdt, speed, player.hitbox, collectCoin, powerups.attractor(player));
       powerups.updatePickups(wdt, speed, player.hitbox, () => sound.play('powerup'));
       game.banner.timer = Math.max(0, game.banner.timer - dt);
@@ -529,6 +548,11 @@ async function init() {
   particles = new ParticleSystem();
   // Each new gap between obstacles gets a power-up, or else maybe a coin.
   obstacles.onSpawn = (ob, previous) => {
+    if (ob.boss) {
+      // The boss appears just off-screen: warn the player as it approaches.
+      showBanner(CONFIG.text.bossWarning, CONFIG.boss.bannerTime);
+      sound.play('bossWarning');
+    }
     if (!powerups.trySpawnBetween(previous, ob, world, game.score)) {
       coins.spawnBetween(previous, ob, world);
     }
