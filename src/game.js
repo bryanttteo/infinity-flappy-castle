@@ -36,6 +36,7 @@ import { Background } from './background.js';
 import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
 import { getDifficulty } from './difficulty.js';
+import * as Skins from './skins.js';
 import * as UI from './ui.js';
 
 const STATE = Object.freeze({
@@ -70,7 +71,12 @@ const game = {
   dawn: 0,             // 0 = night … 1 = full dawn (animated)
   dawnReached: false,  // has this run hit dawn.startScore yet?
   bossesQueued: 0,     // how many bosses this run has triggered so far
+  skinIndex: 0,        // outfit being shown on the menu (may be locked)
+  equippedIndex: 0,    // outfit actually used in play (always unlocked)
+  newSkins: [],        // names of outfits unlocked by the last run
 };
+
+let images = {}; // every loaded PNG, by name
 
 // Screen shake and flash: simple countdown timers.
 const fx = {
@@ -207,7 +213,51 @@ function resize() {
 
 // --------------------------------------------------------- state changes
 
+// ---------------------------------------------------------------- outfits
+
+function applySkin(index) {
+  const skin = Skins.skinList()[index];
+  // Outfit's own sprite → general player sprite → drawn Kanao in outfit colours.
+  const image = images[`skin:${skin.id}`] || images.player || null;
+  player.setSkin(Skins.paletteFor(skin), image);
+}
+
+// Menu arrows: browse outfits. Unlocked ones are equipped (and remembered)
+// straight away; locked ones are just previewed.
+function cycleSkin(dir) {
+  const list = Skins.skinList();
+  if (list.length <= 1) return;
+  game.skinIndex = (game.skinIndex + dir + list.length) % list.length;
+  applySkin(game.skinIndex);
+  const skin = list[game.skinIndex];
+  if (Skins.isUnlocked(skin, game.best)) {
+    game.equippedIndex = game.skinIndex;
+    Skins.saveSelected(skin);
+  }
+  sound.play('skinSwitch');
+}
+
+// Back to the title screen (from game over), e.g. to change outfit.
+function goToMenu() {
+  obstacles.reset();
+  coins.reset();
+  powerups.reset();
+  particles.reset();
+  game.dawn = 0;
+  background.dawn = 0;
+  game.skinIndex = game.equippedIndex;
+  applySkin(game.equippedIndex);
+  player.reset(playerHomeX(), playerHomeY());
+  setState(STATE.MENU);
+}
+
 function startGame() {
+  // If the menu was showing a locked outfit, go back to the equipped one.
+  if (game.skinIndex !== game.equippedIndex) {
+    game.skinIndex = game.equippedIndex;
+    applySkin(game.equippedIndex);
+  }
+  game.newSkins = [];
   game.score = 0;
   game.isNewBest = false;
   game.coins = 0;
@@ -232,9 +282,11 @@ function endGame() {
   shake(CONFIG.screenShake.crash);
   if (CONFIG.flash.enabled) fx.flashTime = CONFIG.flash.duration;
   if (game.score > game.best) {
+    const oldBest = game.best;
     game.best = game.score;
     game.isNewBest = true;
     saveNumber(CONFIG.storage.bestScoreKey, game.best);
+    game.newSkins = Skins.newlyUnlocked(oldBest, game.best).map((s) => s.name);
   }
   setState(STATE.GAME_OVER);
 }
@@ -392,7 +444,10 @@ function render() {
   // Blink the player while invulnerable (after a shield breaks).
   const blink =
     game.state !== STATE.GAME_OVER && powerups.invulnerable && Math.floor(powerups.time * 14) % 2 === 0;
-  if (blink) ctx.globalAlpha = 0.35;
+  // Locked outfit previewed on the menu: show it faded.
+  const lockedPreview =
+    game.state === STATE.MENU && !Skins.isUnlocked(Skins.skinList()[game.skinIndex], game.best);
+  if (blink || lockedPreview) ctx.globalAlpha = 0.35;
   player.draw(ctx);
   ctx.globalAlpha = 1;
   if (game.state !== STATE.GAME_OVER) powerups.drawPlayerEffects(ctx, player);
@@ -422,8 +477,21 @@ function render() {
   }
 
   switch (game.state) {
-    case STATE.MENU:
+    case STATE.MENU: {
       UI.drawMenu(ctx, world, game.best, game.stateTime);
+      const list = Skins.skinList();
+      const skin = list[game.skinIndex];
+      UI.drawSkinSelector(ctx, world, {
+        px: player.x,
+        py: playerHomeY(),
+        name: skin.name,
+        unlocked: Skins.isUnlocked(skin, game.best),
+        unlockScore: skin.unlockScore,
+        index: game.skinIndex,
+        total: list.length,
+        time: game.stateTime,
+      });
+    }
       break;
     case STATE.PLAYING:
       UI.drawHUD(ctx, world, game.score);
@@ -444,6 +512,7 @@ function render() {
         isNewBest: game.isNewBest,
         canRestart: game.stateTime >= CONFIG.gameOver.restartDelay,
         time: game.stateTime,
+        newSkins: game.newSkins,
       });
       break;
   }
@@ -481,8 +550,22 @@ function setupInput() {
         if (!e.repeat) primaryAction(); // holding the key shouldn't machine-gun flaps
         break;
       case 'KeyP':
-      case 'Escape':
         togglePause();
+        break;
+      case 'Escape':
+        if (game.state === STATE.GAME_OVER) {
+          if (game.stateTime >= CONFIG.gameOver.restartDelay) goToMenu();
+        } else {
+          togglePause();
+        }
+        break;
+      case 'ArrowLeft':
+      case 'KeyA':
+        if (game.state === STATE.MENU) cycleSkin(-1);
+        break;
+      case 'ArrowRight':
+      case 'KeyD':
+        if (game.state === STATE.MENU) cycleSkin(1);
         break;
       case 'KeyM':
         sound.toggleMute();
@@ -501,6 +584,25 @@ function setupInput() {
 
     if (UI.hitMuteButton(world, wx, wy)) {
       sound.toggleMute();
+      return;
+    }
+
+    // Menu: tapping an outfit arrow changes outfit instead of starting.
+    if (game.state === STATE.MENU) {
+      const dir = UI.hitSkinArrow(player.x, playerHomeY(), wx, wy);
+      if (dir) {
+        cycleSkin(dir);
+        return;
+      }
+    }
+
+    // Game over: the Menu button under the panel.
+    if (
+      game.state === STATE.GAME_OVER &&
+      game.stateTime >= CONFIG.gameOver.restartDelay &&
+      UI.hitGameOverMenu(world, game.newSkins.length, wx, wy)
+    ) {
+      goToMenu();
       return;
     }
 
@@ -536,8 +638,9 @@ async function init() {
   const fontLoad = document.fonts
     ? document.fonts.load(`800 40px ${CONFIG.fonts.title}`).catch(() => {})
     : Promise.resolve();
-  const [images] = await Promise.all([
-    loadSprites(CONFIG.assets.sprites),
+  // (Outfit sprites from config.skins are loaded alongside the others.)
+  [images] = await Promise.all([
+    loadSprites({ ...CONFIG.assets.sprites, ...Skins.skinSpritePaths() }),
     Promise.race([fontLoad, wait(1500)]),
   ]);
 
@@ -559,6 +662,9 @@ async function init() {
   };
   background = new Background(images);
   sound = new SoundManager();
+
+  game.equippedIndex = game.skinIndex = Skins.loadSelectedIndex(game.best);
+  applySkin(game.equippedIndex);
 
   player.reset(playerHomeX(), playerHomeY());
   setupInput();

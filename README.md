@@ -20,6 +20,8 @@ ruby -run -e httpd . -p 8000   # works on a stock Mac
 |---------|-------------------------|-------------------|
 | Flap    | Space / ↑ / W / click   | tap               |
 | Pause   | P / Esc                 | ❚❚ button         |
+| Outfit  | ← → / A D on the menu   | tap the arrows    |
+| Menu    | Esc on game over        | Menu button       |
 | Mute    | M                       | 🔊 button         |
 
 ## Customise
@@ -42,5 +44,5 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/ui.js`         | menu, score, pause and game-over screens |
 | `src/audio.js`      | Web Audio beeps, optional sound files, mute |
 | `src/assets.js`     | optional PNG loading with fallback |
-| `src/storage.js`    | safe localStorage helpers (best score) |
+| `src/storage.js`    | safe localStorage helpers (best score, settings) |
 | `src/color.js`      | colour blending (night → dawn) |

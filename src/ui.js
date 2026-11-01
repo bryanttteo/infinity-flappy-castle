@@ -121,14 +121,25 @@ export function drawPaused(ctx, world) {
   text(ctx, T.resumeHint, world.width / 2, world.height * 0.52, 18, { maxWidth: world.width - 32 });
 }
 
-export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRestart, time }) {
+// Panel size and position, shared by drawing and the Menu-button hit test.
+function gameOverLayout(world, unlockCount) {
+  const w = Math.min(340, world.width - 40);
+  const h = 262 + unlockCount * 24;
+  const x = (world.width - w) / 2;
+  const y = world.height * 0.42 - h / 2;
+  const menu = { x: world.width / 2 - 60, y: y + h + 14, w: 120, h: 38 };
+  return { x, y, w, h, menu };
+}
+
+export function hitGameOverMenu(world, unlockCount, px, py) {
+  return hitRect(gameOverLayout(world, unlockCount).menu, px, py);
+}
+
+export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRestart, time, newSkins = [] }) {
   ctx.fillStyle = C.overlay;
   ctx.fillRect(0, 0, world.width, world.height);
 
-  const w = Math.min(340, world.width - 40);
-  const h = 262;
-  const x = (world.width - w) / 2;
-  const y = world.height * 0.42 - h / 2;
+  const { x, y, w, h, menu } = gameOverLayout(world, newSkins.length);
   const cx = world.width / 2;
 
   panel(ctx, x, y, w, h);
@@ -148,11 +159,90 @@ export function drawGameOver(ctx, world, { score, best, coins, isNewBest, canRes
     text(ctx, T.newBest, cx, y + 192, 20 * pop, { color: C.accent });
   }
 
+  // One line per outfit unlocked by this run.
+  newSkins.forEach((name, i) => {
+    text(ctx, T.skinUnlocked.replace('{name}', name), cx, y + 220 + i * 24, 17, {
+      color: C.coin,
+      outline: null,
+      maxWidth: w - 24,
+    });
+  });
+
   if (canRestart) {
     ctx.globalAlpha = 0.6 + 0.4 * Math.sin(time * 4);
     text(ctx, T.retryHint, cx, y + h - 26, 17, { outline: null, maxWidth: w - 24 });
     ctx.globalAlpha = 1;
+
+    // Menu button below the panel (also Esc), for changing outfit.
+    roundRect(ctx, menu.x, menu.y, menu.w, menu.h, 10);
+    ctx.fillStyle = C.panel;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = C.accent;
+    ctx.stroke();
+    text(ctx, T.menuButton, cx, menu.y + menu.h / 2, 16, { outline: null, color: C.accent });
   }
+}
+
+// ---------------------------------------------------------- outfit picker
+
+const ARROW_OFFSET = 64; // distance of each arrow from the player's centre
+
+function skinArrowRects(px, py) {
+  return [
+    { dir: -1, x: px - ARROW_OFFSET - 18, y: py - 24, w: 36, h: 48 },
+    { dir: 1, x: px + ARROW_OFFSET - 18, y: py - 24, w: 36, h: 48 },
+  ];
+}
+
+// Returns -1 (left arrow), 1 (right arrow) or 0 (missed both).
+export function hitSkinArrow(px, py, x, y) {
+  for (const r of skinArrowRects(px, py)) if (hitRect(r, x, y, 8)) return r.dir;
+  return 0;
+}
+
+// info: { px, py, name, unlocked, unlockScore, index, total, time }
+export function drawSkinSelector(ctx, world, info) {
+  const { px, py, name, unlocked, unlockScore, index, total, time } = info;
+  if (total <= 1) return;
+
+  // Chevron arrows, gently pulsing.
+  ctx.strokeStyle = C.hudText;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.globalAlpha = 0.65 + 0.35 * Math.sin(time * 3);
+  for (const r of skinArrowRects(px, py)) {
+    const cx = r.x + r.w / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + r.dir * -6, py - 12);
+    ctx.lineTo(cx + r.dir * 6, py);
+    ctx.lineTo(cx + r.dir * -6, py + 12);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  if (!unlocked) drawLock(ctx, px, py);
+
+  const sub = unlocked
+    ? T.skinCounter.replace('{n}', index + 1).replace('{total}', total)
+    : T.skinLocked.replace('{score}', unlockScore);
+  text(ctx, name, px, py + 46, 18, { color: unlocked ? C.hudText : '#9a8fa8' });
+  text(ctx, sub, px, py + 68, 14, { color: unlocked ? C.accent : C.danger, outline: null });
+}
+
+// Small padlock drawn over a locked outfit.
+function drawLock(ctx, x, y) {
+  ctx.strokeStyle = C.hudText;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y - 2, 7, Math.PI, 0);
+  ctx.stroke();
+  roundRect(ctx, x - 10, y - 2, 20, 16, 3);
+  ctx.fillStyle = C.hudText;
+  ctx.fill();
+  ctx.fillStyle = C.hudOutline;
+  ctx.fillRect(x - 1.5, y + 3, 3, 6);
 }
 
 // ----------------------------------------------------------- pause button

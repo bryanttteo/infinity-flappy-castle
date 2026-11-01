@@ -14,7 +14,14 @@ import { CONFIG } from './config.js';
 export class Player {
   constructor(image = null) {
     this.image = image; // optional PNG from config.assets.sprites.player
+    this.palette = CONFIG.colors.kanao; // colours used by the drawn Kanao (changed by skins)
     this.reset(0, 0);
+  }
+
+  // Switch outfit: a full colour palette, and an optional sprite.
+  setSkin(palette, image) {
+    this.palette = palette;
+    this.image = image;
   }
 
   reset(x, y) {
@@ -85,7 +92,7 @@ export class Player {
   // A small chibi figure built from simple shapes. Designed on a 46-unit
   // grid centred on (0,0), facing right, then scaled to CONFIG.player.size.
   drawKanao(ctx) {
-    const C = CONFIG.colors.kanao;
+    const C = this.palette; // current outfit colours
     const s = CONFIG.player.size / 46;
     ctx.scale(s, s);
 
@@ -182,7 +189,7 @@ export class Player {
   }
 
   drawButterfly(ctx, x, y) {
-    const C = CONFIG.colors.kanao;
+    const C = this.palette;
     const f = 0.75 + 0.25 * Math.sin(this.time * 14); // wing "open" amount
     ctx.save();
     ctx.translate(x, y);

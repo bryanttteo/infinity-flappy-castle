@@ -18,7 +18,7 @@ export const CONFIG = {
     characterName: 'Kanao Tsuyuri',
     starring: 'starring',
     startHint: 'Tap · Click · Space to flap',
-    controlsHint: 'P / Esc pause · M mute',
+    controlsHint: '← → outfit · P / Esc pause · M mute',
     paused: 'Paused',
     resumeHint: 'Tap or press P to resume',
     gameOver: 'Fallen in the Castle',
@@ -30,6 +30,10 @@ export const CONFIG = {
     levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
     dawn: 'Dawn breaks over the Castle',
     bossWarning: 'A Shifting Chamber approaches!',
+    skinLocked: 'Best {score} to unlock',   // {score} = unlockScore
+    skinUnlocked: 'New outfit: {name}!',     // shown on game over
+    skinCounter: '{n} / {total}',
+    menuButton: 'Menu (Esc)',
     coinPopup: '+{value}',         // {value} is replaced with coins.value
     coinsLabel: 'Coins',
     powerupNames: {
@@ -162,6 +166,69 @@ export const CONFIG = {
     duration: 0.18,     // seconds
   },
 
+  // --------------------------------------------------------------- Skins
+  // Outfits for Kanao, unlocked by your BEST score. Pick one on the menu.
+  //   colors: any of the colors.kanao keys to change (the rest stay default)
+  //   sprite: optional PNG for this outfit, e.g. 'assets/kanao-crimson.png'.
+  //           If null, the game uses assets.sprites.player (if set), or
+  //           else draws Kanao with this outfit's colours.
+  skins: {
+    enabled: true,
+    list: [
+      {
+        id: 'butterfly',
+        name: 'Butterfly Estate',
+        unlockScore: 0,
+        colors: {},
+        sprite: null,
+      },
+      {
+        id: 'crimson',
+        name: 'Crimson Haori',
+        unlockScore: 25,
+        colors: {
+          capeTop: '#f4d0c8', capeBottom: '#c0392b',
+          butterfly: '#e05a47', butterflyEdge: '#7a1424',
+          swordGuard: '#e05a47', eye: '#b0473f',
+        },
+        sprite: null,
+      },
+      {
+        id: 'moonlit',
+        name: 'Moonlit Wisteria',
+        unlockScore: 50,
+        colors: {
+          capeTop: '#e8e4ff', capeBottom: '#8e6bbf',
+          butterfly: '#b48ae0', butterflyEdge: '#4b3a7a',
+          uniform: '#1b2340', belt: '#c9cde8', hair: '#141a2e', eye: '#7f8fd9',
+        },
+        sprite: null,
+      },
+      {
+        id: 'dawn',
+        name: 'Dawn Blossom',
+        unlockScore: 100,
+        colors: {
+          capeTop: '#fff4d6', capeBottom: '#f2a65a',
+          butterfly: '#f5c542', butterflyEdge: '#a8741a',
+          swordGuard: '#f5c542', belt: '#f5e1b0', eye: '#c98a2e',
+        },
+        sprite: null,
+      },
+      {
+        id: 'mist',
+        name: 'Spirit Mist',
+        unlockScore: 150,
+        colors: {
+          hair: '#e8e4ee', skin: '#f3e6e0', eye: '#e05a6a',
+          capeTop: '#ffffff', capeBottom: '#bfc8d6', uniform: '#3a3f4f',
+          butterfly: '#dfe7f2', butterflyEdge: '#8c97ab',
+        },
+        sprite: null,
+      },
+    ],
+  },
+
   // ---------------------------------------------------------------- Boss
   // The Shifting Chamber: every `every` points, a wide ornate block appears
   // whose gap slides up and down while it passes.
@@ -228,6 +295,10 @@ export const CONFIG = {
       coin: [
         { wave: 'square', from: 1568, duration: 0.05, volume: 0.1 },
         { wave: 'square', from: 2349, duration: 0.14, delay: 0.05, volume: 0.1 },
+      ],
+      // Soft click when changing outfit on the menu.
+      skinSwitch: [
+        { wave: 'triangle', from: 880, to: 1100, duration: 0.06, volume: 0.12 },
       ],
       // Quick rising arpeggio.
       powerup: [
@@ -396,12 +467,14 @@ export const CONFIG = {
       dawn: null,
       bossWarning: null,
       bossClear: null,
+      skinSwitch: null,
     },
   },
 
   storage: {
     bestScoreKey: 'infinityFlappyCastle.bestScore',
     mutedKey: 'infinityFlappyCastle.muted',
+    skinKey: 'infinityFlappyCastle.skin',
   },
 
   debug: {

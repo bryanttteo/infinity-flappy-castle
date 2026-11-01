@@ -17,6 +17,23 @@ export function loadNumber(key, fallback = 0) {
   }
 }
 
+export function loadString(key, fallback = '') {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : raw;
+  } catch {
+    return fallback;
+  }
+}
+
+export function saveString(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage unavailable — ignore.
+  }
+}
+
 export function saveNumber(key, value) {
   try {
     localStorage.setItem(key, String(value));
