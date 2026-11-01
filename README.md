@@ -38,8 +38,9 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/coins.js`      | collectible coins and "+5" popups |
 | `src/powerups.js`   | shield, slow motion and magnet power-ups |
 | `src/particles.js`  | crash butterflies, splinters, petals, sparkles |
-| `src/background.js` | parallax castle interior, floor and ceiling |
+| `src/background.js` | parallax castle interior, floor and ceiling, dawn light |
 | `src/ui.js`         | menu, score, pause and game-over screens |
 | `src/audio.js`      | Web Audio beeps, optional sound files, mute |
 | `src/assets.js`     | optional PNG loading with fallback |
 | `src/storage.js`    | safe localStorage helpers (best score) |
+| `src/color.js`      | colour blending (night → dawn) |

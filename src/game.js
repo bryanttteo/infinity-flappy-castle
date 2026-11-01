@@ -66,7 +66,9 @@ const game = {
   isNewBest: false,
   coins: 0,          // coins collected this run
   level: 0,          // difficulty level (see difficulty.js)
-  levelUpTimer: 0,   // > 0 while the "level up" banner is showing
+  banner: { text: '', timer: 0, duration: 1 }, // short message under the score
+  dawn: 0,             // 0 = night … 1 = full dawn (animated)
+  dawnReached: false,  // has this run hit dawn.startScore yet?
 };
 
 // Screen shake and flash: simple countdown timers.
@@ -104,19 +106,41 @@ function currentSpeed() {
   return currentDifficulty().speed;
 }
 
-// Add points and play `soundName`, or the level-up tune if these points
-// pushed us into a new difficulty level.
+// Add points and play one sound: normally `soundName`, but a level-up or
+// dawn replaces it with its own tune and banner. (Dawn wins if both happen
+// on the same point, which they do at 30 with the default settings.)
 function addScore(points = 1, soundName = 'score') {
   game.score += points;
+  let sfx = soundName;
 
   const { level } = currentDifficulty();
   if (level > game.level) {
     game.level = level;
-    game.levelUpTimer = CONFIG.difficulty.levelUpBannerTime;
-    sound.play('levelUp'); // replaces the normal blip on level-up
-  } else {
-    sound.play(soundName);
+    showBanner(CONFIG.text.levelUp, CONFIG.difficulty.levelUpBannerTime);
+    sfx = 'levelUp';
   }
+
+  const d = CONFIG.dawn;
+  if (d.enabled && !game.dawnReached && game.score >= d.startScore) {
+    game.dawnReached = true;
+    showBanner(CONFIG.text.dawn, d.bannerTime);
+    sfx = 'dawn';
+  }
+
+  sound.play(sfx);
+}
+
+function showBanner(text, duration) {
+  if (duration <= 0) return;
+  game.banner = { text, timer: duration, duration };
+}
+
+// Ease the dawn amount toward 1 once reached (or 0 if not), over transitionTime.
+function updateDawn(dt) {
+  const target = game.dawnReached ? 1 : 0;
+  const step = dt / Math.max(0.01, CONFIG.dawn.transitionTime);
+  game.dawn = target > game.dawn ? Math.min(target, game.dawn + step) : Math.max(target, game.dawn - step);
+  background.dawn = game.dawn;
 }
 
 function collectCoin(coin) {
@@ -170,7 +194,10 @@ function startGame() {
   game.isNewBest = false;
   game.coins = 0;
   game.level = 0;
-  game.levelUpTimer = 0;
+  game.banner.timer = 0;
+  game.dawn = 0;            // every run starts at night
+  game.dawnReached = false;
+  background.dawn = 0;
   obstacles.reset();
   coins.reset();
   powerups.reset();
@@ -246,7 +273,8 @@ function update(dt) {
       obstacles.update(wdt, speed, gap, world, player.x, () => addScore(1));
       coins.update(wdt, speed, player.hitbox, collectCoin, powerups.attractor(player));
       powerups.updatePickups(wdt, speed, player.hitbox, () => sound.play('powerup'));
-      game.levelUpTimer = Math.max(0, game.levelUpTimer - dt);
+      game.banner.timer = Math.max(0, game.banner.timer - dt);
+      updateDawn(dt);
       if (checkCollisions()) endGame();
       updateEffects(dt);
       break;
@@ -353,6 +381,7 @@ function render() {
 
   // Everything below is screen-space: no shake.
   ctx.setTransform(s, 0, 0, s, 0, 0);
+  background.drawDawnWarmth(ctx, world);
   powerups.drawScreenEffects(ctx, world);
 
   if (fx.flashTime > 0) {
@@ -380,7 +409,7 @@ function render() {
     case STATE.PLAYING:
       UI.drawHUD(ctx, world, game.score);
       powerups.drawHUD(ctx, world);
-      UI.drawLevelUp(ctx, world, game.levelUpTimer);
+      UI.drawBanner(ctx, world, game.banner);
       break;
     case STATE.PAUSED:
       UI.drawHUD(ctx, world, game.score);

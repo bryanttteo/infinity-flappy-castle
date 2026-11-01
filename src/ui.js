@@ -100,13 +100,13 @@ export function drawHUD(ctx, world, score) {
   drawPauseButton(ctx, world);
 }
 
-// Brief message when the difficulty goes up. Fades in and out over its lifetime.
-export function drawLevelUp(ctx, world, timeLeft) {
-  const total = CONFIG.difficulty.levelUpBannerTime;
-  if (timeLeft <= 0 || total <= 0) return;
-  const t = 1 - timeLeft / total; // 0 → 1 over the banner's life
-  ctx.globalAlpha = Math.sin(t * Math.PI); // fade in, then out
-  text(ctx, T.levelUp, world.width / 2, world.ceiling + 96, 22, {
+// Brief message under the score (level-up, dawn…). Fades in and out.
+// `banner` is { text, timer, duration }.
+export function drawBanner(ctx, world, banner) {
+  if (banner.timer <= 0) return;
+  const t = 1 - banner.timer / banner.duration; // 0 → 1 over the banner's life
+  ctx.globalAlpha = Math.sin(t * Math.PI);      // fade in, then out
+  text(ctx, banner.text, world.width / 2, world.ceiling + 96, 22, {
     font: F.title,
     color: C.accent,
     maxWidth: world.width - 32,

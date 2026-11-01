@@ -28,6 +28,7 @@ export const CONFIG = {
     bestLabel: 'Best',
     loading: 'Entering the Castle…',
     levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
+    dawn: 'Dawn breaks over the Castle',
     coinPopup: '+{value}',         // {value} is replaced with coins.value
     coinsLabel: 'Coins',
     powerupNames: {
@@ -160,6 +161,19 @@ export const CONFIG = {
     duration: 0.18,     // seconds
   },
 
+  // ---------------------------------------------------------------- Dawn
+  // The Castle has no daytime… until you survive long enough. At startScore,
+  // sunlight breaks in: colours blend to colors.dawn and light shafts appear.
+  // Purely visual; difficulty is unchanged.
+  dawn: {
+    enabled: true,
+    startScore: 30,
+    transitionTime: 4,   // seconds to blend from night to dawn
+    bannerTime: 2.6,     // seconds the "Dawn breaks…" message shows
+    rays: 5,             // number of light shafts
+    motes: 24,           // floating dust specks in the light
+  },
+
   // ---------------------------------------------------------- Difficulty
   // Starts at obstacles.speed / obstacles.gap, then every `pointsPerLevel`
   // points the Castle speeds up and the gaps narrow. See difficulty.js.
@@ -210,6 +224,13 @@ export const CONFIG = {
       shieldBreak: [
         { wave: 'noise', from: 6000, to: 800, duration: 0.25, volume: 0.3 },
         { wave: 'triangle', from: 1400, to: 300, duration: 0.22, volume: 0.2 },
+      ],
+      // Soft, swelling major chord.
+      dawn: [
+        { wave: 'sine', from: 587, duration: 1.3, volume: 0.13 },
+        { wave: 'sine', from: 740, duration: 1.2, delay: 0.15, volume: 0.12 },
+        { wave: 'sine', from: 880, duration: 1.1, delay: 0.3, volume: 0.12 },
+        { wave: 'triangle', from: 1175, duration: 1.0, delay: 0.45, volume: 0.07 },
       ],
       // Rising phrase on a Japanese "in" scale (D, Eb, G, A, Bb).
       levelUp: [
@@ -267,6 +288,24 @@ export const CONFIG = {
     coinShine: 'rgba(255, 255, 255, 0.7)',
     coinGlow: 'rgba(245, 197, 66, 0.28)',
 
+    // Dawn palette: any background colour listed here blends toward this
+    // value once dawn begins. Colours not listed stay the same.
+    dawn: {
+      skyTop: '#3d2c5e',
+      skyBottom: '#f2a65a',
+      farRoom: '#6a4560',
+      farWindow: 'rgba(255, 214, 150, 0.35)',
+      pillar: '#a3333f',
+      pillarShade: '#73303a',
+      lanternGlow: 'rgba(245, 166, 35, 0.06)',
+      ceiling: '#3a2030',
+      floor: '#6b4226',
+      tatami: '#9c9858',
+    },
+    sunRay: 'rgba(255, 222, 160, 0.22)',
+    sunMote: 'rgba(255, 236, 200, 0.8)',
+    dawnWarmth: 'rgba(255, 170, 90, 0.08)', // light warm wash over everything
+
     powerups: {
       shield: '#b48ae0',  // wisteria purple
       slow: '#6fc3df',    // calm water blue
@@ -317,6 +356,7 @@ export const CONFIG = {
       coin: null,
       powerup: null,
       shieldBreak: null,
+      dawn: null,
     },
   },
 
