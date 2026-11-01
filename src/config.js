@@ -135,6 +135,31 @@ export const CONFIG = {
     },
   },
 
+  // ----------------------------------------------------- Juice / effects
+  // Purely visual. Turn any of these off if you prefer a calmer game.
+  particles: {
+    enabled: true,
+    crash: { butterflies: 14, splinters: 18 }, // burst when you crash
+    shieldBreak: { petals: 16 },               // wisteria petals when the shield breaks
+    coinSparkles: 8,                           // gold stars per coin
+    butterflyColors: ['#e9a6c9', '#d98ac0', '#b48ae0', '#fff8ec'],
+    gravity: 900,       // pull on splinters (petals use a fraction of it)
+    maxParticles: 300,  // safety cap
+  },
+
+  screenShake: {
+    enabled: true,      // false = no shaking (some players find it uncomfortable)
+    crash: { intensity: 9, duration: 0.4 },       // intensity = max offset in world units
+    shieldBreak: { intensity: 5, duration: 0.25 },
+  },
+
+  flash: {
+    enabled: true,
+    color: '#fff3e0',
+    crashAlpha: 0.45,   // brightness of the white flash on crash (0–1)
+    duration: 0.18,     // seconds
+  },
+
   // ---------------------------------------------------------- Difficulty
   // Starts at obstacles.speed / obstacles.gap, then every `pointsPerLevel`
   // points the Castle speeds up and the gaps narrow. See difficulty.js.
@@ -199,6 +224,7 @@ export const CONFIG = {
 
   gameOver: {
     restartDelay: 0.6,  // seconds before a tap restarts (stops accidental restarts)
+    panelDelay: 0.4,    // seconds before the game-over panel appears (lets the crash play out)
   },
 
   // ------------------------------------------------------------- Colours

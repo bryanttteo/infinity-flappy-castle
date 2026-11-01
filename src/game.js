@@ -31,6 +31,7 @@ import { Player } from './player.js';
 import { ObstacleManager } from './obstacles.js';
 import { CoinManager } from './coins.js';
 import { PowerUpManager } from './powerups.js';
+import { ParticleSystem } from './particles.js';
 import { Background } from './background.js';
 import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
@@ -68,7 +69,15 @@ const game = {
   levelUpTimer: 0,   // > 0 while the "level up" banner is showing
 };
 
-let player, obstacles, coins, powerups, background, sound;
+// Screen shake and flash: simple countdown timers.
+const fx = {
+  shakeTime: 0,
+  shakeDuration: 1,
+  shakeIntensity: 0,
+  flashTime: 0,
+};
+
+let player, obstacles, coins, powerups, particles, background, sound;
 let lastTime = 0;
 
 // ------------------------------------------------------------------ helpers
@@ -110,9 +119,24 @@ function addScore(points = 1, soundName = 'score') {
   }
 }
 
-function collectCoin() {
+function collectCoin(coin) {
   game.coins += 1;
+  particles.sparkle(coin.x, coin.y);
   addScore(CONFIG.coins.value, 'coin');
+}
+
+// Start a screen shake. `preset` is e.g. CONFIG.screenShake.crash.
+function shake(preset) {
+  if (!CONFIG.screenShake.enabled) return;
+  fx.shakeIntensity = preset.intensity;
+  fx.shakeDuration = preset.duration;
+  fx.shakeTime = preset.duration;
+}
+
+function updateEffects(dt) {
+  particles.update(dt);
+  fx.shakeTime = Math.max(0, fx.shakeTime - dt);
+  fx.flashTime = Math.max(0, fx.flashTime - dt);
 }
 
 // Fit the canvas to the window. The world is ~640 units tall on landscape
@@ -150,6 +174,7 @@ function startGame() {
   obstacles.reset();
   coins.reset();
   powerups.reset();
+  particles.reset();
   player.reset(playerHomeX(), playerHomeY());
   setState(STATE.PLAYING);
   flap(); // first tap also flaps, so the start feels responsive
@@ -157,6 +182,9 @@ function startGame() {
 
 function endGame() {
   sound.play('hit');
+  particles.crash(player.x, player.y);
+  shake(CONFIG.screenShake.crash);
+  if (CONFIG.flash.enabled) fx.flashTime = CONFIG.flash.duration;
   if (game.score > game.best) {
     game.best = game.score;
     game.isNewBest = true;
@@ -220,6 +248,7 @@ function update(dt) {
       powerups.updatePickups(wdt, speed, player.hitbox, () => sound.play('powerup'));
       game.levelUpTimer = Math.max(0, game.levelUpTimer - dt);
       if (checkCollisions()) endGame();
+      updateEffects(dt);
       break;
     }
 
@@ -229,6 +258,7 @@ function update(dt) {
 
     case STATE.GAME_OVER:
       coins.update(dt, 0, null); // world is frozen, but "+5" popups finish fading
+      updateEffects(dt);         // particles, shake and flash keep playing out
       // Let the player tumble down to the floor.
       if (player.y + player.hitbox.r < world.groundTop) {
         player.update(dt);
@@ -276,6 +306,8 @@ function checkCollisions() {
 function breakShield() {
   if (!powerups.consumeShield()) return false;
   sound.play('shieldBreak');
+  particles.shieldBreak(player.x, player.y);
+  shake(CONFIG.screenShake.shieldBreak);
   return true;
 }
 
@@ -284,7 +316,25 @@ function breakShield() {
 function render() {
   // Reset the transform, then scale so 1 unit in our drawing code = 1 world unit.
   const s = world.scale * world.dpr;
-  ctx.setTransform(s, 0, 0, s, 0, 0);
+
+  // SCREEN SHAKE: nudge the whole world by a random offset that shrinks to
+  // zero as the shake runs out. The HUD is drawn afterwards without the
+  // offset, so the score stays readable.
+  let ox = 0, oy = 0;
+  if (fx.shakeTime > 0) {
+    const strength = fx.shakeIntensity * (fx.shakeTime / fx.shakeDuration);
+    ox = (Math.random() * 2 - 1) * strength;
+    oy = (Math.random() * 2 - 1) * strength;
+  }
+  // While shaking, the world shifts away from one edge. Fill the whole canvas
+  // with the darkest colour first so that thin strip isn't left showing the
+  // previous frame.
+  if (ox || oy) {
+    ctx.setTransform(s, 0, 0, s, 0, 0);
+    ctx.fillStyle = CONFIG.colors.skyTop;
+    ctx.fillRect(0, 0, world.width, world.height);
+  }
+  ctx.setTransform(s, 0, 0, s, ox * s, oy * s);
 
   background.drawBack(ctx, world);
   obstacles.draw(ctx, world);
@@ -299,7 +349,18 @@ function render() {
   player.draw(ctx);
   ctx.globalAlpha = 1;
   if (game.state !== STATE.GAME_OVER) powerups.drawPlayerEffects(ctx, player);
+  particles.draw(ctx);
+
+  // Everything below is screen-space: no shake.
+  ctx.setTransform(s, 0, 0, s, 0, 0);
   powerups.drawScreenEffects(ctx, world);
+
+  if (fx.flashTime > 0) {
+    ctx.globalAlpha = CONFIG.flash.crashAlpha * (fx.flashTime / CONFIG.flash.duration);
+    ctx.fillStyle = CONFIG.flash.color;
+    ctx.fillRect(0, 0, world.width, world.height);
+    ctx.globalAlpha = 1;
+  }
 
   if (CONFIG.debug.showHitboxes) {
     obstacles.drawHitboxes(ctx, world);
@@ -327,6 +388,7 @@ function render() {
       UI.drawPaused(ctx, world);
       break;
     case STATE.GAME_OVER:
+      if (game.stateTime < CONFIG.gameOver.panelDelay) break; // let the crash be seen first
       UI.drawGameOver(ctx, world, {
         score: game.score,
         best: game.best,
@@ -435,6 +497,7 @@ async function init() {
   obstacles = new ObstacleManager(images);
   coins = new CoinManager(images);
   powerups = new PowerUpManager(images);
+  particles = new ParticleSystem();
   // Each new gap between obstacles gets a power-up, or else maybe a coin.
   obstacles.onSpawn = (ob, previous) => {
     if (!powerups.trySpawnBetween(previous, ob, world, game.score)) {
