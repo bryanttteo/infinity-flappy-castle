@@ -3,6 +3,8 @@
 A fan-made flappy-style game in plain HTML5 Canvas + JavaScript (ES modules, no build step).
 All art is drawn in code; nothing is copied from other games.
 
+**Play online:** https://bryanttteo.github.io/infinity-flappy-castle/
+
 ## Run it
 
 Browsers block ES modules on `file://` pages, so serve the folder with any tiny local server
