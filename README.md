@@ -20,7 +20,7 @@ ruby -run -e httpd . -p 8000   # works on a stock Mac
 |---------|-------------------------|-------------------|
 | Flap    | Space / ↑ / W / click   | tap               |
 | Pause   | P / Esc                 | ❚❚ button         |
-| Mute    | M (from step 3)         |                   |
+| Mute    | M                       | 🔊 button         |
 
 ## Customise
 
@@ -37,6 +37,6 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/difficulty.js` | score → speed and gap (difficulty curve) |
 | `src/background.js` | parallax castle interior, floor and ceiling |
 | `src/ui.js`         | menu, score, pause and game-over screens |
-| `src/audio.js`      | sound effects (step 3) |
+| `src/audio.js`      | Web Audio beeps, optional sound files, mute |
 | `src/assets.js`     | optional PNG loading with fallback |
 | `src/storage.js`    | safe localStorage helpers (best score) |

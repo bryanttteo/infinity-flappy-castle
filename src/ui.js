@@ -153,17 +153,73 @@ function pauseButtonRect(world) {
   return { x: world.width - 54, y: world.ceiling + 12, w: 42, h: 42 };
 }
 
-export function hitPauseButton(world, x, y) {
-  const r = pauseButtonRect(world);
-  const pad = 8; // slightly bigger touch target than the drawing
+// Mute button sits just left of the pause button.
+function muteButtonRect(world) {
+  return { x: world.width - 104, y: world.ceiling + 12, w: 42, h: 42 };
+}
+
+// Slightly bigger touch target than the drawing, but never overlapping
+// the neighbouring button.
+function hitRect(r, x, y, pad = 4) {
   return x >= r.x - pad && x <= r.x + r.w + pad && y >= r.y - pad && y <= r.y + r.h + pad;
+}
+
+export function hitPauseButton(world, x, y) {
+  return hitRect(pauseButtonRect(world), x, y);
+}
+
+export function hitMuteButton(world, x, y) {
+  return hitRect(muteButtonRect(world), x, y);
+}
+
+function buttonBackground(ctx, r) {
+  roundRect(ctx, r.x, r.y, r.w, r.h, 8);
+  ctx.fillStyle = 'rgba(13,10,26,0.5)';
+  ctx.fill();
+}
+
+// Speaker icon, with sound waves or a red cross when muted.
+export function drawMuteButton(ctx, world, muted) {
+  const r = muteButtonRect(world);
+  buttonBackground(ctx, r);
+
+  const x = r.x + 10;
+  const cy = r.y + r.h / 2;
+  ctx.fillStyle = C.hudText;
+  ctx.beginPath();
+  ctx.moveTo(x, cy - 5);
+  ctx.lineTo(x + 6, cy - 5);
+  ctx.lineTo(x + 13, cy - 11);
+  ctx.lineTo(x + 13, cy + 11);
+  ctx.lineTo(x + 6, cy + 5);
+  ctx.lineTo(x, cy + 5);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  if (muted) {
+    ctx.strokeStyle = C.danger;
+    ctx.beginPath();
+    ctx.moveTo(x + 17, cy - 6);
+    ctx.lineTo(x + 25, cy + 6);
+    ctx.moveTo(x + 25, cy - 6);
+    ctx.lineTo(x + 17, cy + 6);
+    ctx.stroke();
+  } else {
+    ctx.strokeStyle = C.hudText;
+    ctx.beginPath();
+    ctx.arc(x + 14, cy, 6, -0.9, 0.9);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x + 14, cy, 11, -0.9, 0.9);
+    ctx.stroke();
+  }
 }
 
 function drawPauseButton(ctx, world) {
   const r = pauseButtonRect(world);
-  roundRect(ctx, r.x, r.y, r.w, r.h, 8);
-  ctx.fillStyle = 'rgba(13,10,26,0.5)';
-  ctx.fill();
+  buttonBackground(ctx, r);
   ctx.fillStyle = C.hudText;
   ctx.fillRect(r.x + 13, r.y + 11, 6, 20);
   ctx.fillRect(r.x + 23, r.y + 11, 6, 20);

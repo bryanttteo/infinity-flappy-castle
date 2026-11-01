@@ -18,7 +18,7 @@ export const CONFIG = {
     characterName: 'Kanao Tsuyuri',
     starring: 'starring',
     startHint: 'Tap · Click · Space to flap',
-    controlsHint: 'P / Esc pause',
+    controlsHint: 'P / Esc pause · M mute',
     paused: 'Paused',
     resumeHint: 'Tap or press P to resume',
     gameOver: 'Fallen in the Castle',
@@ -94,6 +94,39 @@ export const CONFIG = {
     levelUpBannerTime: 1.4,       // seconds the "level up" message shows (0 = off)
   },
 
+  // --------------------------------------------------------------- Audio
+  // Each sound is a list of tones played together (use `delay` to make
+  // a little melody). See playTone() in audio.js for what each field does.
+  audio: {
+    masterVolume: 0.5, // 0–1
+    startMuted: false, // first-time default; after that, the player's choice is remembered
+    sounds: {
+      // Quick rising "swish" plus a puff of air.
+      flap: [
+        { wave: 'triangle', from: 420, to: 760, duration: 0.09, volume: 0.22 },
+        { wave: 'noise', from: 2600, to: 600, duration: 0.08, volume: 0.06 },
+      ],
+      // Two plucked notes, like a koto.
+      score: [
+        { wave: 'triangle', from: 1175, duration: 0.09, volume: 0.2 },
+        { wave: 'triangle', from: 1568, duration: 0.16, delay: 0.07, volume: 0.2 },
+      ],
+      // Low thud sliding down, plus a crunch of splintering wood.
+      hit: [
+        { wave: 'sawtooth', from: 220, to: 50, duration: 0.35, volume: 0.28 },
+        { wave: 'noise', from: 1800, to: 200, duration: 0.3, volume: 0.35 },
+      ],
+      // Rising phrase on a Japanese "in" scale (D, Eb, G, A, Bb).
+      levelUp: [
+        { wave: 'triangle', from: 587, duration: 0.14, delay: 0.0, volume: 0.18 },
+        { wave: 'triangle', from: 622, duration: 0.14, delay: 0.09, volume: 0.18 },
+        { wave: 'triangle', from: 784, duration: 0.14, delay: 0.18, volume: 0.18 },
+        { wave: 'triangle', from: 880, duration: 0.14, delay: 0.27, volume: 0.18 },
+        { wave: 'triangle', from: 932, duration: 0.3, delay: 0.36, volume: 0.18 },
+      ],
+    },
+  },
+
   gameOver: {
     restartDelay: 0.6,  // seconds before a tap restarts (stops accidental restarts)
   },
@@ -160,16 +193,18 @@ export const CONFIG = {
       backgroundFar: null,   // tiled horizontally, slow parallax
       backgroundMid: null,   // tiled horizontally, medium parallax
     },
+    // Sound files (mp3 / ogg / wav). null = use the beep recipe in `audio.sounds`.
     sounds: {
-      // used from step 3 onwards
       flap: null,
       score: null,
       hit: null,
+      levelUp: null,
     },
   },
 
   storage: {
     bestScoreKey: 'infinityFlappyCastle.bestScore',
+    mutedKey: 'infinityFlappyCastle.muted',
   },
 
   debug: {

@@ -94,12 +94,14 @@ function currentSpeed() {
 
 function addScore() {
   game.score += 1;
-  sound.play('score');
 
   const { level } = currentDifficulty();
   if (level > game.level) {
     game.level = level;
     game.levelUpTimer = CONFIG.difficulty.levelUpBannerTime;
+    sound.play('levelUp'); // replaces the normal score blip on level-up
+  } else {
+    sound.play('score');
   }
 }
 
@@ -277,6 +279,9 @@ function render() {
       });
       break;
   }
+
+  // Drawn last so it sits above every overlay, in every state.
+  UI.drawMuteButton(ctx, world, sound.muted);
 }
 
 // ------------------------------------------------------------- the loop
@@ -298,6 +303,7 @@ function frame(now) {
 
 function setupInput() {
   window.addEventListener('keydown', (e) => {
+    sound.unlock(); // browsers only allow audio after a user gesture
     switch (e.code) {
       case 'Space':
       case 'ArrowUp':
@@ -320,9 +326,15 @@ function setupInput() {
   // and fires immediately (no 300ms "click" delay on mobile).
   canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    sound.unlock();
     const rect = canvas.getBoundingClientRect();
     const wx = (e.clientX - rect.left) / world.scale;
     const wy = (e.clientY - rect.top) / world.scale;
+
+    if (UI.hitMuteButton(world, wx, wy)) {
+      sound.toggleMute();
+      return;
+    }
 
     const inGame = game.state === STATE.PLAYING || game.state === STATE.PAUSED;
     if (inGame && UI.hitPauseButton(world, wx, wy)) {
