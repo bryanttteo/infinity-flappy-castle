@@ -32,6 +32,7 @@ import { ObstacleManager } from './obstacles.js';
 import { Background } from './background.js';
 import { SoundManager } from './audio.js';
 import { loadNumber, saveNumber } from './storage.js';
+import { getDifficulty } from './difficulty.js';
 import * as UI from './ui.js';
 
 const STATE = Object.freeze({
@@ -60,6 +61,8 @@ const game = {
   score: 0,
   best: loadNumber(CONFIG.storage.bestScoreKey, 0),
   isNewBest: false,
+  level: 0,          // difficulty level (see difficulty.js)
+  levelUpTimer: 0,   // > 0 while the "level up" banner is showing
 };
 
 let player, obstacles, background, sound;
@@ -80,9 +83,24 @@ function playerHomeY() {
   return world.ceiling + (world.groundTop - world.ceiling) * 0.45;
 }
 
-// The current scroll speed. Step 2 (difficulty curve) will make this grow.
+// Current speed/gap for this score. On the menu we always use the starting values.
+function currentDifficulty() {
+  return getDifficulty(game.state === STATE.MENU ? 0 : game.score);
+}
+
 function currentSpeed() {
-  return CONFIG.obstacles.speed;
+  return currentDifficulty().speed;
+}
+
+function addScore() {
+  game.score += 1;
+  sound.play('score');
+
+  const { level } = currentDifficulty();
+  if (level > game.level) {
+    game.level = level;
+    game.levelUpTimer = CONFIG.difficulty.levelUpBannerTime;
+  }
 }
 
 // Fit the canvas to the window. The world is ~640 units tall on landscape
@@ -114,6 +132,8 @@ function resize() {
 function startGame() {
   game.score = 0;
   game.isNewBest = false;
+  game.level = 0;
+  game.levelUpTimer = 0;
   obstacles.reset();
   player.reset(playerHomeX(), playerHomeY());
   setState(STATE.PLAYING);
@@ -170,13 +190,12 @@ function update(dt) {
       break;
 
     case STATE.PLAYING: {
-      const speed = currentSpeed();
+      const { speed, gap } = currentDifficulty();
       background.update(dt, speed);
       player.update(dt);
-      obstacles.update(dt, speed, world, player.x, () => {
-        game.score += 1;
-        sound.play('score');
-      });
+      // New obstacles use the current gap; ones already on screen keep theirs.
+      obstacles.update(dt, speed, gap, world, player.x, addScore);
+      game.levelUpTimer = Math.max(0, game.levelUpTimer - dt);
       if (checkCollisions()) endGame();
       break;
     }
@@ -242,6 +261,7 @@ function render() {
       break;
     case STATE.PLAYING:
       UI.drawHUD(ctx, world, game.score);
+      UI.drawLevelUp(ctx, world, game.levelUpTimer);
       break;
     case STATE.PAUSED:
       UI.drawHUD(ctx, world, game.score);

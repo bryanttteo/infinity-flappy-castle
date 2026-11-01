@@ -34,6 +34,7 @@ Everything tunable is in `src/config.js`. To use your own images or sounds, see 
 | `src/game.js`       | entry point, game loop, state machine, input |
 | `src/player.js`     | Kanao's physics, tilt, hitbox and drawing |
 | `src/obstacles.js`  | castle blocks: spawning, scoring, collision |
+| `src/difficulty.js` | score → speed and gap (difficulty curve) |
 | `src/background.js` | parallax castle interior, floor and ceiling |
 | `src/ui.js`         | menu, score, pause and game-over screens |
 | `src/audio.js`      | sound effects (step 3) |

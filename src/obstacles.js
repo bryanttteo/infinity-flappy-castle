@@ -30,7 +30,7 @@ export class ObstacleManager {
 
   // Scroll everything left, spawn new obstacles at a fixed SPACING, remove
   // ones that went off-screen, and call onScore() when one is passed.
-  update(dt, speed, world, playerX, onScore) {
+  update(dt, speed, gap, world, playerX, onScore) {
     const o = CONFIG.obstacles;
 
     for (const ob of this.list) {
@@ -47,15 +47,14 @@ export class ObstacleManager {
     // Spawn by distance (not time) so spacing stays the same at any speed.
     const last = this.list[this.list.length - 1];
     if (!last) {
-      this.spawn(world.width + o.firstOffset, world, null);
+      this.spawn(world.width + o.firstOffset, gap, world, null);
     } else if (last.x + o.spacing <= world.width + o.width) {
-      this.spawn(last.x + o.spacing, world, last);
+      this.spawn(last.x + o.spacing, gap, world, last);
     }
   }
 
-  spawn(x, world, previous) {
+  spawn(x, gap, world, previous) {
     const o = CONFIG.obstacles;
-    const gap = o.gap;
 
     // Range where the gap centre can go without touching ceiling/floor.
     let minY = world.ceiling + o.edgeMargin + gap / 2;

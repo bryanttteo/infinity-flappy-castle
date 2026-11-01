@@ -27,6 +27,7 @@ export const CONFIG = {
     scoreLabel: 'Score',
     bestLabel: 'Best',
     loading: 'Entering the Castle…',
+    levelUp: 'The Castle shifts…', // shown briefly when difficulty goes up
   },
 
   fonts: {
@@ -79,6 +80,18 @@ export const CONFIG = {
     roomHeight: 74,     // height of each stacked "room" in a block
     eaveHeight: 18,     // roof cap at the gap edge
     eaveOverhang: 10,   // how far the roof sticks out sideways (visual only)
+  },
+
+  // ---------------------------------------------------------- Difficulty
+  // Starts at obstacles.speed / obstacles.gap, then every `pointsPerLevel`
+  // points the Castle speeds up and the gaps narrow. See difficulty.js.
+  difficulty: {
+    pointsPerLevel: 10,           // a new level every 10 points
+    speedMultiplierPerLevel: 1.05, // +5% speed per level (compounding)
+    maxSpeedMultiplier: 1.8,      // never faster than 1.8× the starting speed
+    gapShrinkPerLevel: 8,         // gap gets this much smaller per level…
+    minGap: 140,                  // …but never smaller than this
+    levelUpBannerTime: 1.4,       // seconds the "level up" message shows (0 = off)
   },
 
   gameOver: {
